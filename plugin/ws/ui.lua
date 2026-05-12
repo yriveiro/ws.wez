@@ -5,7 +5,7 @@ local Utils = require 'ws.utils'
 
 local M = {}
 
-local selector_alphabet = 'srce1234567890abdfghilmnoptuvwxyz'
+local selector_alphabet = 'sdce1234567890abrfghilmnoptuvwxyz'
 local selector_separator =
   '─────────────────────────────────────────────────────────'
 local no_saved_workspaces_body =
