@@ -14,7 +14,7 @@ wezterm.plugin
 ```
 ]]
 
-local NAME = 'httpssCssZssZsgithubsDscomsZsyriveirosZswsDswez'
+local NAME = 'httpssCssZssZsgithubsDscomsZsyriveirosZswssDswez'
 
 local wezterm = require 'wezterm' ---@type Wezterm
 
