@@ -1,9 +1,12 @@
 # ws.wez
 
-Compact workspace picker for [WezTerm](https://wezfurlong.org/wezterm/index.html) with [zoxide](https://github.com/ajeetdsouza/zoxide) integration and saved workspace restore.
+Compact workspace picker for [WezTerm](https://wezfurlong.org/wezterm/index.html) with
+[zoxide](https://github.com/ajeetdsouza/zoxide) integration and saved workspace restore.
 
 - Configuration appendix: [`docs/configuration.md`](docs/configuration.md)
-- Examples: [`examples/basic.lua`](examples/basic.lua), [`examples/custom.lua`](examples/custom.lua), [`examples/manual-keybindings.lua`](examples/manual-keybindings.lua)
+- Examples: [`examples/basic.lua`](examples/basic.lua),
+  [`examples/custom.lua`](examples/custom.lua),
+  [`examples/manual-keybindings.lua`](examples/manual-keybindings.lua)
 
 ## Install
 
@@ -23,7 +26,8 @@ return config
 
 ## Configure
 
-`apply_to_config(config, opts)` is the main entrypoint. Pass options there to keep the plugin setup in one place.
+`apply_to_config(config, opts)` is the main entrypoint. Pass options there to keep the plugin setup
+in one place.
 
 ```lua
 local wezterm = require 'wezterm'
@@ -54,7 +58,8 @@ ws.apply_to_config(config, {
 return config
 ```
 
-`setup(opts)` is also supported when you want to configure the plugin first and call `apply_to_config(config)` later.
+`setup(opts)` is also supported when you want to configure the plugin first and call
+`apply_to_config(config)` later.
 
 ## Usage
 
@@ -91,14 +96,14 @@ Supported entrypoints are:
 - `ws.rename_workspace()`
 - `ws.create_workspace_manually()`
 
-Direct imports of internal runtime modules under `plugin/ws/*.lua` are not part of the supported public API.
+Direct imports of internal runtime modules under `plugin/ws/*.lua` are not part of the supported
+public API.
 
 ## Runtime Layout
 
-WezTerm plugins are loaded through a flat entrypoint at `plugin/init.lua`.
-This plugin keeps that public entrypoint, then extends `package.path` from `wezterm.plugin.list()` so the implementation can live under the namespaced `plugin/ws/*` tree.
-
-That mirrors the multi-file plugin-loading pattern used by [`wezterm-status`](https://github.com/yriveiro/wezterm-status) while avoiding generic internal module names like `config` or `utils` in the shared Lua `require` space.
+WezTerm plugins are loaded through a flat entrypoint at `plugin/init.lua`. This plugin keeps that
+public entrypoint, then extends `package.path` from the current entrypoint path so the
+implementation can live under the namespaced `plugin/ws/*` tree.
 
 > [!NOTE]
 > The default opener uses `LEADER`, so set `config.leader` in your WezTerm config.
@@ -112,11 +117,13 @@ That mirrors the multi-file plugin-loading pattern used by [`wezterm-status`](ht
 - `activate_keytable`: default opener binding, or `false` to disable it
 - `restore_on_gui_startup`: restore saved workspaces during `gui-startup`
 
-See [`docs/configuration.md`](docs/configuration.md) for defaults, field-level reference, and the full public API.
+See [`docs/configuration.md`](docs/configuration.md) for defaults, field-level reference, and the
+full public API.
 
 ## Type Annotations
 
-With [wezterm-types](https://github.com/DrKJeff16/wezterm-types), you can annotate the plugin value in your config:
+With [wezterm-types](https://github.com/DrKJeff16/wezterm-types), you can annotate the plugin value
+in your config:
 
 ```lua
 ---@type WorkspacePicker

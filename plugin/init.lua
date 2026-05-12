@@ -14,12 +14,6 @@ wezterm.plugin
 ```
 ]]
 
-local wezterm = require 'wezterm' ---@type Wezterm
-
-local NAME = 'httpssCssZssZsgithubsDscomsZsyriveirosZswsDswez'
-
-local separator = wezterm.target_triple:match 'windows' and '\\' or '/'
-
 ---@param path string|nil
 ---@return string|nil
 local function dirname(path)
@@ -32,16 +26,6 @@ end
 
 ---@return string
 local function resolve_plugin_root()
-  local first_plugin = wezterm.plugin.list()[1]
-
-  if first_plugin and type(first_plugin.plugin_dir) == 'string' then
-    local plugins_root = first_plugin.plugin_dir:match('(.*)' .. separator)
-
-    if plugins_root then
-      return plugins_root .. separator .. NAME .. separator .. 'plugin' .. separator
-    end
-  end
-
   local source = debug.getinfo(1, 'S').source
   local current_file = type(source) == 'string' and source:match '^@(.+)$'
   local current_dir = dirname(current_file)
@@ -50,7 +34,7 @@ local function resolve_plugin_root()
     return current_dir
   end
 
-  error("ws: Failed to resolve plugin directory for '" .. NAME .. "'")
+  error 'ws: Failed to resolve plugin directory from current entrypoint'
 end
 
 ---@param root_path string
