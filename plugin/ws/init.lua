@@ -53,6 +53,7 @@ end
 ---@param pane Pane
 function M.show_workspace_selector(window, pane)
   Selectors.show_workspace_selector(window, pane, {
+    save_current_workspace = M.save_current_workspace,
     save_all_workspaces = M.save_all_workspaces,
     show_delete_menu = M.show_delete_menu,
     create_workspace_manually = M.create_workspace_manually,

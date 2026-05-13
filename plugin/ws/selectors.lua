@@ -28,6 +28,7 @@ end
 local function build_workspace_selector_choices(config)
   ---@type WorkspacePickerChoice[]
   local choices = {
+    { id = 'save-current-workspace', label = 'w  Save current workspace' },
     { id = 'save-all', label = 's  Save all workspaces' },
     { id = 'delete-saved-workspace', label = 'd  Delete saved workspace' },
     { id = 'create-workspace', label = 'c  Create new workspace' },
@@ -141,6 +142,7 @@ end
 ---@param window Window
 ---@param pane Pane
 ---@param callbacks {
+---@  save_current_workspace: fun(): Action,
 ---@  save_all_workspaces: fun(): Action,
 ---@  show_delete_menu: fun(window: Window, pane: Pane),
 ---@  create_workspace_manually: fun(): Action,
@@ -156,6 +158,11 @@ function M.show_workspace_selector(window, pane, callbacks)
     fuzzy_description = '(wezterm) Select workspace or directory: ',
     on_select = function(win, current_pane, id)
       if not id or id == 'separator' then
+        return
+      end
+
+      if id == 'save-current-workspace' then
+        win:perform_action(callbacks.save_current_workspace(), current_pane)
         return
       end
 
