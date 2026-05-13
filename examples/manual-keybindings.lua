@@ -41,7 +41,7 @@ config.keys = {
     action = ws.save_all_workspaces(),
   },
   {
-    key = 'r',
+    key = 'e',
     mods = 'LEADER',
     action = ws.rename_workspace(),
   },

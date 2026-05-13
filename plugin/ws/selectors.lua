@@ -28,11 +28,11 @@ end
 local function build_workspace_selector_choices(config)
   ---@type WorkspacePickerChoice[]
   local choices = {
-    { id = 'save-current-workspace', label = 'w  Save current workspace' },
-    { id = 'save-all', label = 's  Save all workspaces' },
-    { id = 'delete-saved-workspace', label = 'd  Delete saved workspace' },
-    { id = 'create-workspace', label = 'c  Create new workspace' },
-    { id = 'rename-workspace', label = 'e  Rename current workspace' },
+    { id = 'save-current-workspace', label = 'Save current workspace' },
+    { id = 'save-all', label = 'Save all workspaces' },
+    { id = 'delete-saved-workspace', label = 'Delete saved workspace' },
+    { id = 'create-workspace', label = 'Create new workspace' },
+    { id = 'rename-workspace', label = 'Rename current workspace' },
   }
 
   local current = wezterm.mux.get_active_workspace()
