@@ -111,6 +111,35 @@ function M.save_workspace()
 end
 
 ---@return Action
+function M.save_current_workspace()
+  return wezterm.action_callback(function(window, pane)
+    local active_workspace = wezterm.mux.get_active_workspace()
+    local save_state = build_save_state(active_workspace, pane)
+    local ok = State.save_workspace_state(active_workspace, save_state)
+
+    if ok then
+      wezterm.log_info("ws: Saved workspace '" .. active_workspace .. "'")
+
+      local path_msg = save_state.cwd and (' at ' .. save_state.cwd) or ''
+
+      UI.notify(
+        window,
+        'Workspace Saved',
+        "Saved workspace '" .. active_workspace .. "'" .. path_msg
+      )
+      return
+    end
+
+    wezterm.log_warn("ws: Failed to save workspace '" .. active_workspace .. "'")
+    UI.notify(
+      window,
+      'Workspace Save Failed',
+      "Failed to save workspace '" .. active_workspace .. "'."
+    )
+  end)
+end
+
+---@return Action
 function M.save_all_workspaces()
   return wezterm.action_callback(function(window, pane)
     local workspace_names = wezterm.mux.get_workspace_names()

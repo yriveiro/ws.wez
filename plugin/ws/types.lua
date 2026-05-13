@@ -83,6 +83,7 @@
 ---@field restore_all_workspaces fun(): Action
 ---@field restore_workspaces_on_gui_startup fun(cmd?: SpawnCommand)
 ---@field save_all_workspaces fun(): Action
+---@field save_current_workspace fun(): Action
 ---@field save_workspace fun(): Action
 ---@field setup fun(opts?: WorkspacePickerConfig): WorkspacePicker
 ---@field show_delete_menu fun(window: Window, pane: Pane)

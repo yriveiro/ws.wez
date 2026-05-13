@@ -76,6 +76,11 @@ function M.save_workspace()
 end
 
 ---@return Action
+function M.save_current_workspace()
+  return Actions.save_current_workspace()
+end
+
+---@return Action
 function M.save_all_workspaces()
   return Actions.save_all_workspaces()
 end
