@@ -37,6 +37,7 @@ ws.apply_to_config(config, {
   restore_on_gui_startup = true,
   activate_keytable = { mods = 'LEADER', key = 'w' },
   colors = {
+    action_prefix = '#7dcfff',
     workspace_prefix = '#a6e3a1',
     zoxide_prefix = '#f38ba8',
     current_indicator = '#a6e3a1',
@@ -44,9 +45,16 @@ ws.apply_to_config(config, {
     path = '#6c7086',
   },
   labels = {
-    workspace = '[Workspace]',
-    zoxide = '[Zoxide]',
-    current = '<- current',
+    workspace = '',
+    zoxide = '',
+    current = '',
+  },
+  style = {
+    action = 'seti_config',
+    current = 'pl_right_hard_divider',
+    pane_count = 'cod_library',
+    workspace = 'md_television_guide',
+    zoxide = 'oct_file_directory_fill',
   },
 })
 
@@ -59,6 +67,7 @@ return config
 
 - `LEADER` + `w`: open the workspace selector
 - Live workspaces: switch, create, rename, and delete live mux workspaces
+- Live workspace entries show the current workspace marker and live pane counts
 - Saved workspace states: save current, save all, restore saved, and delete saved state entries
 - `s`: save the current workspace state from the selector
 - `a`: save all live workspace states from the selector
@@ -116,7 +125,8 @@ That mirrors the multi-file plugin-loading pattern used by [`wezterm-status`](ht
 
 - `zoxide_path`: path to the `zoxide` executable
 - `colors`: selector colors
-- `labels`: selector labels
+- `labels`: optional selector text shown next to icons
+- `style`: selector icon names or literal glyphs
 - `activate_keytable`: default opener binding, or `false` to disable it
 - `restore_on_gui_startup`: restore saved workspaces during `gui-startup`
 

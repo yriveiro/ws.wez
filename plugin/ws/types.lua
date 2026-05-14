@@ -1,6 +1,7 @@
 ---@class WsWezColors
 ---@field action_prefix? string
 ---@field current_indicator? string
+---@field pane_count? string
 ---@field path? string
 ---@field text? string
 ---@field workspace_prefix? string
@@ -9,6 +10,7 @@
 ---@class (exact) WsWezResolvedColors
 ---@field action_prefix string
 ---@field current_indicator string
+---@field pane_count string
 ---@field path string
 ---@field text string
 ---@field workspace_prefix string

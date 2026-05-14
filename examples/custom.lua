@@ -18,6 +18,7 @@ ws.apply_to_config(config, {
     workspace_prefix = '#a6e3a1',
     zoxide_prefix = '#f38ba8',
     current_indicator = '#a6e3a1',
+    pane_count = '#ffb86c',
     text = '#cdd6f4',
     path = '#6c7086',
   },
@@ -28,7 +29,7 @@ ws.apply_to_config(config, {
   },
   style = {
     action = 'seti_config',
-    current = 'pl_right_hard_divider',
+    current = 'cod_rocket',
     pane_count = 'cod_library',
     workspace = 'md_television_guide',
     zoxide = 'oct_file_directory_fill',

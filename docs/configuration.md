@@ -48,6 +48,7 @@ colors = {
   workspace_prefix = '#9ece6a',
   zoxide_prefix = '#f7768e',
   current_indicator = '#9ece6a',
+  pane_count = '#ff9e64',
   text = '#c8d0e0',
   path = '#565f89',
 }
@@ -57,6 +58,7 @@ colors = {
 - `workspace_prefix`: live workspace label color
 - `zoxide_prefix`: zoxide entry label color
 - `current_indicator`: active workspace marker color
+- `pane_count`: live pane count color
 - `text`: main item text color
 - `path`: zoxide path color
 
@@ -83,7 +85,7 @@ Controls selector icons. Values can be either Nerd Font symbol names from `wezte
 ```lua
 style = {
   action = 'seti_config',
-  current = 'pl_right_hard_divider',
+  current = 'cod_rocket',
   pane_count = 'cod_library',
   workspace = 'md_television_guide',
   zoxide = 'oct_file_directory_fill',

@@ -13,6 +13,7 @@ local default_config = {
     workspace_prefix = '#9ece6a',
     zoxide_prefix = '#f7768e',
     current_indicator = '#9ece6a',
+    pane_count = '#ff9e64',
     text = '#c8d0e0',
     path = '#565f89',
   },
@@ -23,7 +24,7 @@ local default_config = {
   },
   style = {
     action = 'seti_config',
-    current = 'pl_right_hard_divider',
+    current = 'cod_rocket',
     pane_count = 'cod_library',
     workspace = 'md_television_guide',
     zoxide = 'oct_file_directory_fill',

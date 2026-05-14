@@ -135,7 +135,7 @@ function M.format_live_workspace_label(name, is_current, pane_count, config)
   table_insert(label, { Foreground = { Color = colors.text } })
   table_insert(label, { Text = name })
 
-  table_insert(label, { Foreground = { Color = colors.path } })
+  table_insert(label, { Foreground = { Color = colors.pane_count } })
   table_insert(label, { Attribute = { Intensity = 'Half' } })
   table_insert(label, { Text = ' (' })
 

@@ -117,37 +117,50 @@ end
 ---@param config WsWezResolvedConfig
 ---@return WsWezChoice[]
 local function build_workspace_selector_choices(config)
-  ---@type WsWezChoice[]
-  local choices = {
+  local action_specs = {
     {
       id = 'save-current-workspace',
-      label = UI.format_action_label('Save current workspace state', config),
+      text = 'Save current workspace state',
     },
     {
       id = 'save-all',
-      label = UI.format_action_label('Save all workspace states', config),
+      text = 'Save all workspace states',
     },
     {
       id = 'restore-saved-workspace',
-      label = UI.format_action_label('Restore saved workspace state', config),
+      text = 'Restore saved workspace state',
     },
     {
       id = 'delete-saved-workspace',
-      label = UI.format_action_label('Delete saved workspace state', config),
+      text = 'Delete saved workspace state',
     },
     {
       id = 'create-workspace',
-      label = UI.format_action_label('Create live workspace', config),
+      text = 'Create live workspace',
     },
     {
       id = 'rename-workspace',
-      label = UI.format_action_label('Rename current live workspace', config),
+      text = 'Rename current live workspace',
     },
     {
       id = 'delete-workspace',
-      label = UI.format_action_label('Delete live workspace', config),
+      text = 'Delete live workspace',
     },
   }
+
+  table_sort(action_specs, function(left, right)
+    return left.text < right.text
+  end)
+
+  ---@type WsWezChoice[]
+  local choices = {}
+
+  for _, spec in ipairs(action_specs) do
+    table_insert(choices, {
+      id = spec.id,
+      label = UI.format_action_label(spec.text, config),
+    })
+  end
 
   for _, choice in ipairs(build_live_workspace_choices(config)) do
     table_insert(choices, choice)
