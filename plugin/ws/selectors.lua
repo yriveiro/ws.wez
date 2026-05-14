@@ -10,6 +10,7 @@ local type = type
 
 local home_dir = wezterm.home_dir
 local mux = wezterm.mux
+local mux_all_windows = wezterm.mux.all_windows
 
 local Config = require 'ws.config'
 local State = require 'ws.state'
@@ -72,12 +73,41 @@ end
 ---@return WsWezChoice[]
 local function build_live_workspace_choices(config)
   local current = mux.get_active_workspace()
+  local pane_counts = {}
   local workspace_choices = {}
+
+  for _, mux_window in ipairs(mux_all_windows() or {}) do
+    local ok_workspace, workspace_name = pcall(mux_window.get_workspace, mux_window)
+
+    if ok_workspace and type(workspace_name) == 'string' and workspace_name ~= '' then
+      pane_counts[workspace_name] = pane_counts[workspace_name] or 0
+
+      local ok_tabs, tabs_with_info = pcall(mux_window.tabs_with_info, mux_window)
+
+      if ok_tabs and type(tabs_with_info) == 'table' then
+        for _, tab_info in ipairs(tabs_with_info) do
+          if tab_info.tab then
+            local ok_panes, panes_with_info =
+              pcall(tab_info.tab.panes_with_info, tab_info.tab)
+
+            if ok_panes and type(panes_with_info) == 'table' then
+              pane_counts[workspace_name] = pane_counts[workspace_name] + #panes_with_info
+            end
+          end
+        end
+      end
+    end
+  end
 
   for _, name in ipairs(get_sorted_live_workspace_names()) do
     table_insert(workspace_choices, {
       id = live_workspace_prefix .. name,
-      label = UI.format_live_workspace_label(name, name == current, config),
+      label = UI.format_live_workspace_label(
+        name,
+        name == current,
+        pane_counts[name] or 0,
+        config
+      ),
     })
   end
 
@@ -89,13 +119,34 @@ end
 local function build_workspace_selector_choices(config)
   ---@type WsWezChoice[]
   local choices = {
-    { id = 'save-current-workspace', label = 'Save current workspace state' },
-    { id = 'save-all', label = 'Save all workspace states' },
-    { id = 'restore-saved-workspace', label = 'Restore saved workspace state' },
-    { id = 'delete-saved-workspace', label = 'Delete saved workspace state' },
-    { id = 'create-workspace', label = 'Create live workspace' },
-    { id = 'rename-workspace', label = 'Rename current live workspace' },
-    { id = 'delete-workspace', label = 'Delete live workspace' },
+    {
+      id = 'save-current-workspace',
+      label = UI.format_action_label('Save current workspace state', config),
+    },
+    {
+      id = 'save-all',
+      label = UI.format_action_label('Save all workspace states', config),
+    },
+    {
+      id = 'restore-saved-workspace',
+      label = UI.format_action_label('Restore saved workspace state', config),
+    },
+    {
+      id = 'delete-saved-workspace',
+      label = UI.format_action_label('Delete saved workspace state', config),
+    },
+    {
+      id = 'create-workspace',
+      label = UI.format_action_label('Create live workspace', config),
+    },
+    {
+      id = 'rename-workspace',
+      label = UI.format_action_label('Rename current live workspace', config),
+    },
+    {
+      id = 'delete-workspace',
+      label = UI.format_action_label('Delete live workspace', config),
+    },
   }
 
   for _, choice in ipairs(build_live_workspace_choices(config)) do

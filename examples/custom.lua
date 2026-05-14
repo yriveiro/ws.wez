@@ -14,6 +14,7 @@ ws.apply_to_config(config, {
   restore_on_gui_startup = true,
   activate_keytable = { mods = 'LEADER', key = 'w' },
   colors = {
+    action_prefix = '#89ddff',
     workspace_prefix = '#a6e3a1',
     zoxide_prefix = '#f38ba8',
     current_indicator = '#a6e3a1',
@@ -21,9 +22,16 @@ ws.apply_to_config(config, {
     path = '#6c7086',
   },
   labels = {
-    workspace = '[Workspace]',
-    zoxide = '[Zoxide]',
-    current = '<- current',
+    workspace = '',
+    zoxide = '',
+    current = '',
+  },
+  style = {
+    action = 'seti_config',
+    current = 'pl_right_hard_divider',
+    pane_count = 'cod_library',
+    workspace = 'md_television_guide',
+    zoxide = 'oct_file_directory_fill',
   },
 })
 

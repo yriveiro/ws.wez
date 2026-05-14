@@ -9,6 +9,7 @@ local default_config = {
   zoxide_path = '/opt/homebrew/bin/zoxide',
   restore_on_gui_startup = true,
   colors = {
+    action_prefix = '#7dcfff',
     workspace_prefix = '#9ece6a',
     zoxide_prefix = '#f7768e',
     current_indicator = '#9ece6a',
@@ -16,9 +17,16 @@ local default_config = {
     path = '#565f89',
   },
   labels = {
-    workspace = '[Workspace]',
-    zoxide = '[Zoxide]',
-    current = '<- current',
+    workspace = '',
+    zoxide = '',
+    current = '',
+  },
+  style = {
+    action = 'seti_config',
+    current = 'pl_right_hard_divider',
+    pane_count = 'cod_library',
+    workspace = 'md_television_guide',
+    zoxide = 'oct_file_directory_fill',
   },
   activate_keytable = { mods = 'LEADER', key = 'w' },
 }

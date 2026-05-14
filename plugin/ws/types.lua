@@ -1,4 +1,5 @@
 ---@class WsWezColors
+---@field action_prefix? string
 ---@field current_indicator? string
 ---@field path? string
 ---@field text? string
@@ -6,11 +7,26 @@
 ---@field zoxide_prefix? string
 
 ---@class (exact) WsWezResolvedColors
+---@field action_prefix string
 ---@field current_indicator string
 ---@field path string
 ---@field text string
 ---@field workspace_prefix string
 ---@field zoxide_prefix string
+
+---@class WsWezStyle
+---@field action? string
+---@field current? string
+---@field pane_count? string
+---@field workspace? string
+---@field zoxide? string
+
+---@class (exact) WsWezResolvedStyle
+---@field action string
+---@field current string
+---@field pane_count string
+---@field workspace string
+---@field zoxide string
 
 ---@class WsWezLabels
 ---@field current? string
@@ -31,6 +47,7 @@
 ---@field colors? WsWezColors
 ---@field labels? WsWezLabels
 ---@field restore_on_gui_startup? boolean
+---@field style? WsWezStyle
 ---@field zoxide_path? string
 
 ---@class (exact) WsWezResolvedConfig
@@ -38,6 +55,7 @@
 ---@field colors WsWezResolvedColors
 ---@field labels WsWezResolvedLabels
 ---@field restore_on_gui_startup boolean
+---@field style WsWezResolvedStyle
 ---@field zoxide_path string
 
 ---@class WsWezChoice

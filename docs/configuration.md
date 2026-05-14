@@ -30,6 +30,7 @@ ws.apply_to_config(config, opts)
 | `zoxide_path` | `string` | `'/opt/homebrew/bin/zoxide'` |
 | `colors` | `table` | see below |
 | `labels` | `table` | see below |
+| `style` | `table` | see below |
 | `activate_keytable` | `table \| false` | `{ mods = 'LEADER', key = 'w' }` |
 | `restore_on_gui_startup` | `boolean` | `true` |
 
@@ -43,6 +44,7 @@ Controls selector colors.
 
 ```lua
 colors = {
+  action_prefix = '#7dcfff',
   workspace_prefix = '#9ece6a',
   zoxide_prefix = '#f7768e',
   current_indicator = '#9ece6a',
@@ -51,6 +53,7 @@ colors = {
 }
 ```
 
+- `action_prefix`: action entry icon color
 - `workspace_prefix`: live workspace label color
 - `zoxide_prefix`: zoxide entry label color
 - `current_indicator`: active workspace marker color
@@ -59,19 +62,39 @@ colors = {
 
 ### `labels`
 
-Controls selector labels.
+Controls optional selector text shown next to icons.
 
 ```lua
 labels = {
-  workspace = '[Workspace]',
-  zoxide = '[Zoxide]',
-  current = '<- current',
+  workspace = '',
+  zoxide = '',
+  current = '',
 }
 ```
 
-- `workspace`: label for live workspace entries
-- `zoxide`: label for zoxide entries
-- `current`: marker for the active workspace
+- `workspace`: optional text after the live workspace icon
+- `zoxide`: optional text after the zoxide icon
+- `current`: optional text after the active workspace marker icon
+
+### `style`
+
+Controls selector icons. Values can be either Nerd Font symbol names from `wezterm.nerdfonts` or literal strings.
+
+```lua
+style = {
+  action = 'seti_config',
+  current = 'pl_right_hard_divider',
+  pane_count = 'cod_library',
+  workspace = 'md_television_guide',
+  zoxide = 'oct_file_directory_fill',
+}
+```
+
+- `action`: icon for selector action entries
+- `current`: marker icon for the active live workspace
+- `pane_count`: icon shown with the live pane count
+- `workspace`: icon for live workspace entries
+- `zoxide`: icon for zoxide directory entries
 
 ### `activate_keytable`
 

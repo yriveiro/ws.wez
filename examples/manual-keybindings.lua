@@ -14,11 +14,19 @@ ws.setup {
   restore_on_gui_startup = false,
   zoxide_path = '/opt/homebrew/bin/zoxide',
   colors = {
+    action_prefix = '#7dcfff',
     workspace_prefix = '#9ece6a',
     zoxide_prefix = '#f7768e',
     current_indicator = '#9ece6a',
     text = '#c8d0e0',
     path = '#565f89',
+  },
+  style = {
+    action = 'seti_config',
+    current = 'pl_right_hard_divider',
+    pane_count = 'cod_library',
+    workspace = 'md_television_guide',
+    zoxide = 'oct_file_directory_fill',
   },
 }
 

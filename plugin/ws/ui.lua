@@ -5,9 +5,11 @@ local os_date = os.date
 local string_format = string.format
 local table_concat = table.concat
 local table_insert = table.insert
+local tostring = tostring
 local type = type
 
 local wezterm_format = wezterm.format
+local wezterm_nerdfonts = wezterm.nerdfonts or {}
 
 local Utils = require 'ws.utils'
 
@@ -59,23 +61,101 @@ function M.selector_separator()
   return selector_separator
 end
 
----@param name string
----@param is_current boolean
+---@param value string|nil
+---@return string
+local function resolve_style_component(value)
+  if type(value) ~= 'string' or value == '' then
+    return ''
+  end
+
+  return wezterm_nerdfonts[value] or value
+end
+
+---@param elements table[]
+---@param color string
+---@param icon string
+---@param text string
+local function append_icon_and_text(elements, color, icon, text)
+  if icon == '' and text == '' then
+    return
+  end
+
+  table_insert(elements, { Foreground = { Color = color } })
+
+  if icon ~= '' then
+    table_insert(elements, { Text = icon })
+  end
+
+  if text ~= '' then
+    if icon ~= '' then
+      table_insert(elements, { Text = ' ' })
+    end
+
+    table_insert(elements, { Text = text })
+  end
+
+  table_insert(elements, { Text = ' ' })
+end
+
+---@param text string
 ---@param config WsWezResolvedConfig
 ---@return string
-function M.format_live_workspace_label(name, is_current, config)
+function M.format_action_label(text, config)
+  local label = {}
+
+  append_icon_and_text(
+    label,
+    config.colors.action_prefix,
+    resolve_style_component(config.style.action),
+    ''
+  )
+  table_insert(label, { Foreground = { Color = config.colors.text } })
+  table_insert(label, { Text = text })
+
+  return wezterm_format(label)
+end
+
+---@param name string
+---@param is_current boolean
+---@param pane_count integer
+---@param config WsWezResolvedConfig
+---@return string
+function M.format_live_workspace_label(name, is_current, pane_count, config)
   local colors = config.colors
   local labels = config.labels
-  local label = {
-    { Foreground = { Color = colors.workspace_prefix } },
-    { Text = labels.workspace },
-    { Foreground = { Color = colors.text } },
-    { Text = string_format(is_current and ' %-30s ' or ' %s ', name) },
-  }
+  local style = config.style
+  local label = {}
+
+  append_icon_and_text(
+    label,
+    colors.workspace_prefix,
+    resolve_style_component(style.workspace),
+    labels.workspace
+  )
+  table_insert(label, { Foreground = { Color = colors.text } })
+  table_insert(label, { Text = name })
+
+  table_insert(label, { Foreground = { Color = colors.path } })
+  table_insert(label, { Attribute = { Intensity = 'Half' } })
+  table_insert(label, { Text = ' (' })
+
+  local pane_count_icon = resolve_style_component(style.pane_count)
+
+  if pane_count_icon ~= '' then
+    table_insert(label, { Text = pane_count_icon .. ' ' })
+  end
+
+  table_insert(label, { Text = tostring(pane_count) .. ')' })
+  table_insert(label, { Attribute = { Intensity = 'Normal' } })
 
   if is_current then
-    table_insert(label, { Foreground = { Color = colors.current_indicator } })
-    table_insert(label, { Text = labels.current })
+    table_insert(label, { Text = ' ' })
+    append_icon_and_text(
+      label,
+      colors.current_indicator,
+      resolve_style_component(style.current),
+      labels.current
+    )
   end
 
   return wezterm_format(label)
@@ -87,15 +167,20 @@ end
 function M.format_directory_label(directory, config)
   local colors = config.colors
   local labels = config.labels
+  local label = {}
 
-  return wezterm_format {
-    { Foreground = { Color = colors.zoxide_prefix } },
-    { Text = labels.zoxide },
-    { Foreground = { Color = colors.text } },
-    { Text = ' ' .. Utils.basename(directory) .. ' ' },
-    { Foreground = { Color = colors.path } },
-    { Text = '(' .. directory .. ')' },
-  }
+  append_icon_and_text(
+    label,
+    colors.zoxide_prefix,
+    resolve_style_component(config.style.zoxide),
+    labels.zoxide
+  )
+  table_insert(label, { Foreground = { Color = colors.text } })
+  table_insert(label, { Text = Utils.basename(directory) .. ' ' })
+  table_insert(label, { Foreground = { Color = colors.path } })
+  table_insert(label, { Text = '(' .. directory .. ')' })
+
+  return wezterm_format(label)
 end
 
 ---@param saved_name string
