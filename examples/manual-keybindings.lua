@@ -1,9 +1,9 @@
 -- Manual keybindings through the supported public plugin facade.
 
-local wezterm = require 'wezterm'
+local wezterm = require 'wezterm' ---@type Wezterm
 local ws = wezterm.plugin.require 'https://github.com/yriveiro/ws.wez'
 
-local config = wezterm.config_builder()
+local config = wezterm.config_builder() ---@type Config
 
 config.color_scheme = 'Tokyo Night'
 config.font = wezterm.font 'JetBrains Mono'
@@ -38,6 +38,11 @@ config.keys = {
   {
     key = 's',
     mods = 'LEADER',
+    action = ws.save_current_workspace(),
+  },
+  {
+    key = 'a',
+    mods = 'LEADER',
     action = ws.save_all_workspaces(),
   },
   {
@@ -56,7 +61,14 @@ config.keys = {
     key = 'd',
     mods = 'LEADER',
     action = wezterm.action_callback(function(window, pane)
-      ws.show_delete_menu(window, pane)
+      ws.show_delete_live_menu(window, pane)
+    end),
+  },
+  {
+    key = 'x',
+    mods = 'LEADER',
+    action = wezterm.action_callback(function(window, pane)
+      ws.show_delete_saved_menu(window, pane)
     end),
   },
 }

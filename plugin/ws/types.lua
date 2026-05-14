@@ -1,82 +1,82 @@
----@class WorkspacePickerColors
+---@class WsWezColors
 ---@field current_indicator? string
 ---@field path? string
 ---@field text? string
 ---@field workspace_prefix? string
 ---@field zoxide_prefix? string
 
----@class (exact) WorkspacePickerResolvedColors
+---@class (exact) WsWezResolvedColors
 ---@field current_indicator string
 ---@field path string
 ---@field text string
 ---@field workspace_prefix string
 ---@field zoxide_prefix string
 
----@class WorkspacePickerLabels
+---@class WsWezLabels
 ---@field current? string
 ---@field workspace? string
 ---@field zoxide? string
 
----@class (exact) WorkspacePickerResolvedLabels
+---@class (exact) WsWezResolvedLabels
 ---@field current string
 ---@field workspace string
 ---@field zoxide string
 
----@class WorkspacePickerKeybind
+---@class WsWezKeybind
 ---@field key string
 ---@field mods string
 
----@class WorkspacePickerConfig
----@field activate_keytable? WorkspacePickerKeybind|false
----@field colors? WorkspacePickerColors
----@field labels? WorkspacePickerLabels
+---@class WsWezConfig
+---@field activate_keytable? WsWezKeybind|false
+---@field colors? WsWezColors
+---@field labels? WsWezLabels
 ---@field restore_on_gui_startup? boolean
 ---@field zoxide_path? string
 
----@class (exact) WorkspacePickerResolvedConfig
----@field activate_keytable WorkspacePickerKeybind|false
----@field colors WorkspacePickerResolvedColors
----@field labels WorkspacePickerResolvedLabels
+---@class (exact) WsWezResolvedConfig
+---@field activate_keytable WsWezKeybind|false
+---@field colors WsWezResolvedColors
+---@field labels WsWezResolvedLabels
 ---@field restore_on_gui_startup boolean
 ---@field zoxide_path string
 
----@class WorkspacePickerChoice
+---@class WsWezChoice
 ---@field id string
 ---@field label string
 
----@class WorkspacePickerSavedState
+---@class WsWezSavedState
 ---@field cwd? string
 ---@field timestamp? integer
 
----@alias WorkspacePickerSavedWorkspaceIndex table<string, WorkspacePickerSavedState>
+---@alias WsWezSavedWorkspaceIndex table<string, WsWezSavedState>
 
----@class WorkspacePickerRestoreResult
+---@class WsWezRestoreResult
 ---@field failed string[]
 ---@field first_restored_workspace string|nil
 ---@field found integer
 ---@field restored integer
 ---@field skipped integer
 
----@class WorkspacePickerRestoreOptions
+---@class WsWezRestoreOptions
 ---@field cmd? SpawnCommand
 
----@class WorkspacePickerSpawnWindowArgs: SpawnCommand
+---@class WsWezSpawnWindowArgs: SpawnCommand
 ---@field height? integer
 ---@field width? integer
 ---@field workspace string
 
----@class WorkspacePickerGlobalState
+---@class WsWezGlobalState
 ---@field restore_attempted_on_gui_startup? boolean
 
----@class WorkspacePickerInputSelectorOpts
----@field choices WorkspacePickerChoice[]
+---@class WsWezInputSelectorOpts
+---@field choices WsWezChoice[]
 ---@field description string
 ---@field fuzzy_description string
 ---@field on_select CallbackInputSelector
 ---@field title string
 
----@class WorkspacePicker
----@field apply_to_config fun(config: Config, opts?: WorkspacePickerConfig): Config
+---@class WsWezPlugin
+---@field apply_to_config fun(config: Config, opts?: WsWezConfig): Config
 ---@field create_workspace_manually fun(): Action
 ---@field get_data_dir fun(): string
 ---@field rename_workspace fun(): Action
@@ -84,9 +84,12 @@
 ---@field restore_workspaces_on_gui_startup fun(cmd?: SpawnCommand)
 ---@field save_all_workspaces fun(): Action
 ---@field save_current_workspace fun(): Action
+---@field save_workspace_as fun(): Action
 ---@field save_workspace fun(): Action
----@field setup fun(opts?: WorkspacePickerConfig): WorkspacePicker
+---@field setup fun(opts?: WsWezConfig): WsWezPlugin
+---@field show_delete_live_menu fun(window: Window, pane: Pane)
 ---@field show_delete_menu fun(window: Window, pane: Pane)
+---@field show_delete_saved_menu fun(window: Window, pane: Pane)
 ---@field show_restore_menu fun(window: Window, pane: Pane)
 ---@field show_workspace_selector fun(window: Window, pane: Pane)
 

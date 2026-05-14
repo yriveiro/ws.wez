@@ -7,8 +7,19 @@ local Config = require 'ws.config'
 local Selectors = require 'ws.selectors'
 local State = require 'ws.state'
 
----@type WorkspacePicker
-local M = {}
+---@type WsWezPlugin
+local M = {
+  create_workspace_manually = Actions.create_workspace_manually,
+  get_data_dir = State.get_data_dir,
+  rename_workspace = Actions.rename_workspace,
+  restore_all_workspaces = Actions.restore_all_workspaces,
+  save_all_workspaces = Actions.save_all_workspaces,
+  save_current_workspace = Actions.save_current_workspace,
+  save_workspace_as = Actions.save_workspace,
+  show_delete_live_menu = Selectors.show_delete_live_menu,
+  show_delete_saved_menu = Selectors.show_delete_saved_menu,
+  show_restore_menu = Selectors.show_restore_menu,
+}
 
 ---@param cmd? SpawnCommand
 function M.restore_workspaces_on_gui_startup(cmd)
@@ -41,8 +52,8 @@ function M.restore_workspaces_on_gui_startup(cmd)
   wezterm.log_warn('ws: Startup restore ' .. summary)
 end
 
----@param opts? WorkspacePickerConfig
----@return WorkspacePicker
+---@param opts? WsWezConfig
+---@return WsWezPlugin
 function M.setup(opts)
   Config.setup(M.restore_workspaces_on_gui_startup, opts)
 
@@ -52,59 +63,11 @@ end
 ---@param window Window
 ---@param pane Pane
 function M.show_workspace_selector(window, pane)
-  Selectors.show_workspace_selector(window, pane, {
-    save_current_workspace = M.save_current_workspace,
-    save_all_workspaces = M.save_all_workspaces,
-    show_delete_menu = M.show_delete_menu,
-    create_workspace_manually = M.create_workspace_manually,
-    rename_workspace = M.rename_workspace,
-  })
-end
-
----@return Action
-function M.rename_workspace()
-  return Actions.rename_workspace()
-end
-
----@return Action
-function M.create_workspace_manually()
-  return Actions.create_workspace_manually()
-end
-
----@return Action
-function M.save_workspace()
-  return Actions.save_workspace()
-end
-
----@return Action
-function M.save_current_workspace()
-  return Actions.save_current_workspace()
-end
-
----@return Action
-function M.save_all_workspaces()
-  return Actions.save_all_workspaces()
-end
-
----@return Action
-function M.restore_all_workspaces()
-  return Actions.restore_all_workspaces()
-end
-
----@param window Window
----@param pane Pane
-function M.show_restore_menu(window, pane)
-  Selectors.show_restore_menu(window, pane)
-end
-
----@param window Window
----@param pane Pane
-function M.show_delete_menu(window, pane)
-  Selectors.show_delete_menu(window, pane)
+  Selectors.show_workspace_selector(window, pane, M)
 end
 
 ---@param config Config
----@param opts? WorkspacePickerConfig
+---@param opts? WsWezConfig
 ---@return Config
 function M.apply_to_config(config, opts)
   local cfg = Config.apply(M.restore_workspaces_on_gui_startup, opts)
@@ -139,8 +102,7 @@ function M.apply_to_config(config, opts)
   return config
 end
 
-function M.get_data_dir()
-  return State.get_data_dir()
-end
+M.save_workspace = M.save_workspace_as
+M.show_delete_menu = M.show_delete_live_menu
 
 return M

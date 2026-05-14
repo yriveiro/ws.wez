@@ -4,7 +4,7 @@ local Utils = require 'ws.utils'
 
 local M = {}
 
----@type WorkspacePickerResolvedConfig
+---@type WsWezResolvedConfig
 local default_config = {
   zoxide_path = '/opt/homebrew/bin/zoxide',
   restore_on_gui_startup = true,
@@ -23,7 +23,7 @@ local default_config = {
   activate_keytable = { mods = 'LEADER', key = 'w' },
 }
 
----@type WorkspacePickerResolvedConfig|nil
+---@type WsWezResolvedConfig|nil
 local user_config
 local gui_startup_restore_registered = false
 
@@ -37,22 +37,22 @@ local function register_gui_startup(handler)
   wezterm.on('gui-startup', handler)
 end
 
----@param opts? WorkspacePickerConfig
----@return WorkspacePickerResolvedConfig
+---@param opts? WsWezConfig
+---@return WsWezResolvedConfig
 local function merge(opts)
   local merged = Utils.table_merge({}, default_config)
 
   return Utils.table_merge(merged, opts or {})
 end
 
----@return WorkspacePickerResolvedConfig
+---@return WsWezResolvedConfig
 function M.get()
   return user_config or default_config
 end
 
 ---@param handler fun(cmd?: SpawnCommand)
----@param opts? WorkspacePickerConfig
----@return WorkspacePickerResolvedConfig
+---@param opts? WsWezConfig
+---@return WsWezResolvedConfig
 function M.setup(handler, opts)
   user_config = merge(opts)
 
@@ -64,8 +64,8 @@ function M.setup(handler, opts)
 end
 
 ---@param handler fun(cmd?: SpawnCommand)
----@param opts? WorkspacePickerConfig
----@return WorkspacePickerResolvedConfig
+---@param opts? WsWezConfig
+---@return WsWezResolvedConfig
 function M.apply(handler, opts)
   if opts then
     return M.setup(handler, opts)

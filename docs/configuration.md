@@ -7,14 +7,18 @@ Compact reference for `ws.wez` options and public API. See [`README.md`](../READ
 Use either form:
 
 ```lua
+local wezterm = require 'wezterm' ---@type Wezterm
 local ws = wezterm.plugin.require 'https://github.com/yriveiro/ws.wez'
+local config = wezterm.config_builder() ---@type Config
 
 ws.setup(opts)
 ws.apply_to_config(config)
 ```
 
 ```lua
+local wezterm = require 'wezterm' ---@type Wezterm
 local ws = wezterm.plugin.require 'https://github.com/yriveiro/ws.wez'
+local config = wezterm.config_builder() ---@type Config
 
 ws.apply_to_config(config, opts)
 ```
@@ -81,7 +85,7 @@ Set it to `false` to disable the automatic opener and bind actions yourself.
 
 ### `restore_on_gui_startup`
 
-Restores saved workspaces during `gui-startup`. Restore runs once per GUI startup, skips workspaces that are already live, and reuses the saved `cwd` when recreating a workspace.
+Restores saved workspace states during `gui-startup`. Restore runs once per GUI startup, skips workspaces that are already live, and reuses the saved `cwd` when recreating a workspace.
 
 ## Public API
 
@@ -104,35 +108,54 @@ Apply plugin configuration to a WezTerm config and add the default selector keyb
 
 ### `show_workspace_selector(window, pane)`
 
-Open the main workspace selector.
+Open the main workspace selector. The selector includes two separate groups of actions:
+
+- live workspace actions: switch, create, rename, delete
+- saved workspace state actions: save current, save all, restore, delete saved
 
 ### `save_workspace()`
 
-Return a WezTerm action that saves the current workspace.
+Compatibility alias for `save_workspace_as()`.
+
+### `save_workspace_as()`
+
+Return a WezTerm action that prompts for a saved state name and saves the active live workspace under that name.
+
+### `save_current_workspace()`
+
+Return a WezTerm action that saves the active live workspace under its current name.
 
 ### `save_all_workspaces()`
 
-Return a WezTerm action that saves all live workspaces.
+Return a WezTerm action that saves workspace state for all live workspaces.
 
 ### `show_restore_menu(window, pane)`
 
-Open the saved-workspace restore menu.
+Open the saved-workspace-state restore menu.
 
 ### `show_delete_menu(window, pane)`
 
-Open the saved-workspace delete menu. This removes saved entries only and does not close live WezTerm workspaces.
+Compatibility alias for `show_delete_live_menu(window, pane)`.
+
+### `show_delete_live_menu(window, pane)`
+
+Open the live-workspace delete menu. This closes the selected live WezTerm workspace only.
+
+### `show_delete_saved_menu(window, pane)`
+
+Open the saved-workspace-state delete menu. This removes saved entries only and does not close live WezTerm workspaces.
 
 ### `restore_all_workspaces()`
 
-Return a WezTerm action that restores all saved workspaces immediately.
+Return a WezTerm action that restores all saved workspace states immediately.
 
 ### `restore_workspaces_on_gui_startup(cmd)`
 
-Restore saved workspaces from the `gui-startup` event. This is usually registered automatically when `restore_on_gui_startup = true`.
+Restore saved workspace states from the `gui-startup` event. This is usually registered automatically when `restore_on_gui_startup = true`.
 
 ### `get_data_dir()`
 
-Return the directory used for saved workspace data.
+Return the directory used for saved workspace state data.
 
 ### `rename_workspace()`
 
@@ -146,3 +169,15 @@ Return a WezTerm action that prompts for and creates a workspace manually.
 
 - The public facade above is the supported integration path.
 - Internal namespaced modules under `plugin/ws/*` are implementation details and may change without notice.
+
+## Type Support
+
+With `wezterm-types`, annotate WezTerm values like this:
+
+```lua
+local wezterm = require 'wezterm' ---@type Wezterm
+local config = wezterm.config_builder() ---@type Config
+local ws = wezterm.plugin.require 'https://github.com/yriveiro/ws.wez'
+```
+
+`wezterm-types` provides the core WezTerm API types. This repository declares its own plugin facade type as `WsWezPlugin` in `plugin/ws/types.lua`, so it is available while editing this repo or if you add this plugin checkout to LuaLS `workspace.library`.

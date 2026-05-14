@@ -1,6 +1,16 @@
 local wezterm = require 'wezterm' ---@type Wezterm
 local act = wezterm.action
 
+local ipairs = ipairs
+local pairs = pairs
+local pcall = pcall
+local table_insert = table.insert
+local table_sort = table.sort
+local type = type
+
+local home_dir = wezterm.home_dir
+local mux = wezterm.mux
+
 local Config = require 'ws.config'
 local State = require 'ws.state'
 local UI = require 'ws.ui'
@@ -9,68 +19,100 @@ local Zoxide = require 'ws.zoxide'
 
 local M = {}
 
----@param saved_workspaces WorkspacePickerSavedWorkspaceIndex
+local live_workspace_prefix = 'ws:'
+local zoxide_choice_prefix = 'zoxide:'
+
+---@param saved_workspaces WsWezSavedWorkspaceIndex
 ---@return string[]
 local function get_sorted_saved_workspace_names(saved_workspaces)
   local names = {}
 
   for name in pairs(saved_workspaces) do
-    table.insert(names, name)
+    table_insert(names, name)
   end
 
-  table.sort(names)
+  table_sort(names)
 
   return names
 end
 
----@param config WorkspacePickerResolvedConfig
----@return WorkspacePickerChoice[]
+---@return string[]
+local function get_sorted_live_workspace_names()
+  local names = mux.get_workspace_names()
+
+  table_sort(names, function(left, right)
+    if left == right then
+      return false
+    end
+
+    if left == 'default' then
+      return true
+    end
+
+    if right == 'default' then
+      return false
+    end
+
+    return left < right
+  end)
+
+  return names
+end
+
+---@param value string
+---@param prefix string
+---@return string|nil
+local function strip_prefix(value, prefix)
+  if value:sub(1, #prefix) == prefix then
+    return value:sub(#prefix + 1)
+  end
+end
+
+---@param config WsWezResolvedConfig
+---@return WsWezChoice[]
+local function build_live_workspace_choices(config)
+  local current = mux.get_active_workspace()
+  local workspace_choices = {}
+
+  for _, name in ipairs(get_sorted_live_workspace_names()) do
+    table_insert(workspace_choices, {
+      id = live_workspace_prefix .. name,
+      label = UI.format_live_workspace_label(name, name == current, config),
+    })
+  end
+
+  return workspace_choices
+end
+
+---@param config WsWezResolvedConfig
+---@return WsWezChoice[]
 local function build_workspace_selector_choices(config)
-  ---@type WorkspacePickerChoice[]
+  ---@type WsWezChoice[]
   local choices = {
-    { id = 'save-current-workspace', label = 'Save current workspace' },
-    { id = 'save-all', label = 'Save all workspaces' },
-    { id = 'delete-saved-workspace', label = 'Delete saved workspace' },
-    { id = 'create-workspace', label = 'Create new workspace' },
-    { id = 'rename-workspace', label = 'Rename current workspace' },
+    { id = 'save-current-workspace', label = 'Save current workspace state' },
+    { id = 'save-all', label = 'Save all workspace states' },
+    { id = 'restore-saved-workspace', label = 'Restore saved workspace state' },
+    { id = 'delete-saved-workspace', label = 'Delete saved workspace state' },
+    { id = 'create-workspace', label = 'Create live workspace' },
+    { id = 'rename-workspace', label = 'Rename current live workspace' },
+    { id = 'delete-workspace', label = 'Delete live workspace' },
   }
 
-  local current = wezterm.mux.get_active_workspace()
-  local workspace_choices = {}
-  local default_workspace_choice
-
-  for _, name in ipairs(wezterm.mux.get_workspace_names()) do
-    local choice = {
-      id = 'ws:' .. name,
-      label = UI.format_live_workspace_label(name, name == current, config),
-    }
-
-    if name == 'default' then
-      default_workspace_choice = choice
-    else
-      table.insert(workspace_choices, choice)
-    end
-  end
-
-  if default_workspace_choice then
-    table.insert(workspace_choices, 1, default_workspace_choice)
-  end
-
-  for _, choice in ipairs(workspace_choices) do
-    table.insert(choices, choice)
+  for _, choice in ipairs(build_live_workspace_choices(config)) do
+    table_insert(choices, choice)
   end
 
   local zoxide_dirs = Zoxide.get_directories()
 
   if #zoxide_dirs > 0 then
-    table.insert(choices, {
+    table_insert(choices, {
       id = 'separator',
       label = UI.selector_separator(),
     })
 
     for _, directory in ipairs(zoxide_dirs) do
-      table.insert(choices, {
-        id = 'zoxide:' .. directory,
+      table_insert(choices, {
+        id = zoxide_choice_prefix .. directory,
         label = UI.format_directory_label(directory, config),
       })
     end
@@ -83,7 +125,7 @@ end
 ---@param pane Pane
 ---@param directory string
 local function switch_to_directory_workspace(window, pane, directory)
-  local expanded_directory = Utils.expand_home(directory, wezterm.home_dir)
+  local expanded_directory = Utils.expand_home(directory, home_dir)
 
   window:perform_action(
     act.SwitchToWorkspace {
@@ -102,7 +144,7 @@ end
 ---@  title: string,
 ---@  description: string,
 ---@  fuzzy_description: string,
----@  on_select: fun(window: Window, pane: Pane, saved_name: string, saved_state: WorkspacePickerSavedState|nil)
+---@  on_select: fun(window: Window, pane: Pane, saved_name: string, saved_state: WsWezSavedState|nil)
 ---@ }
 local function show_saved_workspace_selector(window, pane, opts)
   local config = Config.get()
@@ -114,11 +156,11 @@ local function show_saved_workspace_selector(window, pane, opts)
     return
   end
 
-  ---@type WorkspacePickerChoice[]
+  ---@type WsWezChoice[]
   local choices = {}
 
   for _, name in ipairs(saved_names) do
-    table.insert(choices, {
+    table_insert(choices, {
       id = name,
       label = UI.format_saved_workspace_label(name, saved_workspaces[name], config),
     })
@@ -141,10 +183,114 @@ end
 
 ---@param window Window
 ---@param pane Pane
+---@param opts {
+---@  title: string,
+---@  description: string,
+---@  fuzzy_description: string,
+---@  on_select: fun(window: Window, pane: Pane, workspace_name: string)
+---@ }
+local function show_live_workspace_selector(window, pane, opts)
+  local config = Config.get()
+  local choices = build_live_workspace_choices(config)
+
+  if #choices == 0 then
+    UI.notify_no_workspaces(window)
+    return
+  end
+
+  UI.show_input_selector(window, pane, {
+    title = opts.title,
+    choices = choices,
+    description = opts.description,
+    fuzzy_description = opts.fuzzy_description,
+    on_select = function(win, current_pane, id)
+      if not id then
+        return
+      end
+
+      local workspace_name = strip_prefix(id, live_workspace_prefix)
+
+      if not workspace_name then
+        return
+      end
+
+      opts.on_select(win, current_pane, workspace_name)
+    end,
+  })
+end
+
+local selector_action_handlers = {
+  ['save-current-workspace'] = function(window, pane, callbacks)
+    window:perform_action(callbacks.save_current_workspace(), pane)
+  end,
+  ['save-all'] = function(window, pane, callbacks)
+    window:perform_action(callbacks.save_all_workspaces(), pane)
+  end,
+  ['restore-saved-workspace'] = function(window, pane, callbacks)
+    callbacks.show_restore_menu(window, pane)
+  end,
+  ['delete-workspace'] = function(window, pane, callbacks)
+    callbacks.show_delete_live_menu(window, pane)
+  end,
+  ['delete-saved-workspace'] = function(window, pane, callbacks)
+    callbacks.show_delete_saved_menu(window, pane)
+  end,
+  ['create-workspace'] = function(window, pane, callbacks)
+    window:perform_action(callbacks.create_workspace_manually(), pane)
+  end,
+  ['rename-workspace'] = function(window, pane, callbacks)
+    window:perform_action(callbacks.rename_workspace(), pane)
+  end,
+}
+
+---@param workspace_name string
+---@return string
+local function get_delete_fallback_workspace_name(workspace_name)
+  for _, name in ipairs(mux.get_workspace_names()) do
+    if name ~= workspace_name then
+      return name
+    end
+  end
+
+  if workspace_name ~= 'default' then
+    return 'default'
+  end
+
+  return 'workspace'
+end
+
+---@param workspace_name string
+---@return boolean, string|nil
+local function activate_workspace(workspace_name)
+  for _, name in ipairs(mux.get_workspace_names()) do
+    if name == workspace_name then
+      local ok, err = pcall(mux.set_active_workspace, workspace_name)
+
+      return ok, err
+    end
+  end
+
+  local spawned, spawn_err = pcall(mux.spawn_window, {
+    workspace = workspace_name,
+  })
+
+  if not spawned then
+    return false, spawn_err
+  end
+
+  local ok, err = pcall(mux.set_active_workspace, workspace_name)
+
+  return ok, err
+end
+
+---@param window Window
+---@param pane Pane
 ---@param callbacks {
 ---@  save_current_workspace: fun(): Action,
 ---@  save_all_workspaces: fun(): Action,
----@  show_delete_menu: fun(window: Window, pane: Pane),
+---@  show_restore_menu: fun(window: Window, pane: Pane),
+---@  show_delete_live_menu: fun(window: Window, pane: Pane),
+---@  show_delete_saved_menu: fun(window: Window, pane: Pane),
 ---@  create_workspace_manually: fun(): Action,
 ---@  rename_workspace: fun(): Action
 ---@ }
@@ -161,38 +307,24 @@ function M.show_workspace_selector(window, pane, callbacks)
         return
       end
 
-      if id == 'save-current-workspace' then
-        win:perform_action(callbacks.save_current_workspace(), current_pane)
+      local action = selector_action_handlers[id]
+
+      if action then
+        action(win, current_pane, callbacks)
         return
       end
 
-      if id == 'save-all' then
-        win:perform_action(callbacks.save_all_workspaces(), current_pane)
+      local workspace_name = strip_prefix(id, live_workspace_prefix)
+
+      if workspace_name then
+        win:perform_action(act.SwitchToWorkspace { name = workspace_name }, current_pane)
         return
       end
 
-      if id == 'delete-saved-workspace' then
-        callbacks.show_delete_menu(win, current_pane)
-        return
-      end
+      local directory = strip_prefix(id, zoxide_choice_prefix)
 
-      if id == 'create-workspace' then
-        win:perform_action(callbacks.create_workspace_manually(), current_pane)
-        return
-      end
-
-      if id == 'rename-workspace' then
-        win:perform_action(callbacks.rename_workspace(), current_pane)
-        return
-      end
-
-      if id:sub(1, 3) == 'ws:' then
-        win:perform_action(act.SwitchToWorkspace { name = id:sub(4) }, current_pane)
-        return
-      end
-
-      if id:sub(1, 7) == 'zoxide:' then
-        switch_to_directory_workspace(win, current_pane, id:sub(8))
+      if directory then
+        switch_to_directory_workspace(win, current_pane, directory)
       end
     end,
   })
@@ -202,9 +334,9 @@ end
 ---@param pane Pane
 function M.show_restore_menu(window, pane)
   show_saved_workspace_selector(window, pane, {
-    title = '(wezterm) Restore workspace',
-    description = '(wezterm) Restore a saved workspace: ',
-    fuzzy_description = '(wezterm) Restore workspace: ',
+    title = '(wezterm) Restore saved workspace state',
+    description = '(wezterm) Restore a saved workspace state: ',
+    fuzzy_description = '(wezterm) Restore saved workspace state: ',
     on_select = function(win, current_pane, saved_name, saved_state)
       if not saved_state then
         wezterm.log_warn("ws: Failed to load workspace state for '" .. saved_name .. "'")
@@ -241,11 +373,75 @@ end
 
 ---@param window Window
 ---@param pane Pane
-function M.show_delete_menu(window, pane)
+function M.show_delete_live_menu(window, pane)
+  show_live_workspace_selector(window, pane, {
+    title = '(wezterm) Delete live workspace',
+    description = '(wezterm) Delete a live workspace: ',
+    fuzzy_description = '(wezterm) Delete live workspace: ',
+    on_select = function(win, current_pane, workspace_name)
+      local deleting_active_workspace = workspace_name == mux.get_active_workspace()
+      local deleted, result = State.delete_live_workspace(workspace_name, {
+        current_pane_id = current_pane:pane_id(),
+        defer_current_pane = deleting_active_workspace,
+      })
+
+      if not deleted then
+        local detail = type(result) == 'string' and result or 'unknown error'
+
+        wezterm.log_warn(
+          "ws: Failed to delete live workspace '" .. workspace_name .. "': " .. detail
+        )
+        UI.notify(
+          win,
+          'Workspace Delete Failed',
+          "Failed to delete live workspace '" .. workspace_name .. "'."
+        )
+        return
+      end
+
+      if
+        deleting_active_workspace
+        and type(result) == 'table'
+        and result.deferred_pane_id
+      then
+        local fallback_workspace = get_delete_fallback_workspace_name(workspace_name)
+        local activated, activate_err = activate_workspace(fallback_workspace)
+
+        if not activated then
+          wezterm.log_warn(
+            "ws: Failed to switch away from workspace '"
+              .. workspace_name
+              .. "': "
+              .. tostring(activate_err)
+          )
+          UI.notify(
+            win,
+            'Workspace Delete Failed',
+            "Failed to finish deleting live workspace '" .. workspace_name .. "'."
+          )
+          return
+        end
+
+        State.kill_pane_later(result.deferred_pane_id)
+      end
+
+      wezterm.log_info("ws: Deleted live workspace '" .. workspace_name .. "'")
+      UI.notify(
+        win,
+        'Workspace Deleted',
+        "Deleted live workspace '" .. workspace_name .. "'."
+      )
+    end,
+  })
+end
+
+---@param window Window
+---@param pane Pane
+function M.show_delete_saved_menu(window, pane)
   show_saved_workspace_selector(window, pane, {
-    title = '(wezterm) Delete saved workspace',
-    description = '(wezterm) Delete a saved workspace: ',
-    fuzzy_description = '(wezterm) Delete saved workspace: ',
+    title = '(wezterm) Delete saved workspace state',
+    description = '(wezterm) Delete a saved workspace state: ',
+    fuzzy_description = '(wezterm) Delete saved workspace state: ',
     on_select = function(win, _, saved_name)
       if State.delete_workspace_state(saved_name) then
         wezterm.log_info("ws: Deleted saved workspace '" .. saved_name .. "'")
@@ -265,6 +461,12 @@ function M.show_delete_menu(window, pane)
       )
     end,
   })
+end
+
+---@param window Window
+---@param pane Pane
+function M.show_delete_menu(window, pane)
+  M.show_delete_live_menu(window, pane)
 end
 
 return M

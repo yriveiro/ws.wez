@@ -1,6 +1,14 @@
 local wezterm = require 'wezterm' ---@type Wezterm
 local act = wezterm.action
 
+local ipairs = ipairs
+local os_time = os.time
+local string_format = string.format
+local table_concat = table.concat
+local type = type
+
+local mux = wezterm.mux
+
 local Cwd = require 'ws.cwd'
 local State = require 'ws.state'
 local UI = require 'ws.ui'
@@ -16,15 +24,44 @@ end
 ---@param workspace_name string
 ---@param pane Pane|nil
 ---@param timestamp integer|nil
----@return WorkspacePickerSavedState
+---@return WsWezSavedState
 local function build_save_state(workspace_name, pane, timestamp)
   return {
     cwd = Cwd.get_workspace_path(workspace_name, pane),
-    timestamp = timestamp or os.time(),
+    timestamp = timestamp or os_time(),
   }
 end
 
----@param result WorkspacePickerRestoreResult
+---@param window Window
+---@param workspace_name string
+---@param save_state WsWezSavedState
+---@return boolean
+local function persist_workspace_state(window, workspace_name, save_state)
+  if not State.save_workspace_state(workspace_name, save_state) then
+    wezterm.log_warn("ws: Failed to save workspace state '" .. workspace_name .. "'")
+    UI.notify(
+      window,
+      'Workspace State Save Failed',
+      "Failed to save workspace state '" .. workspace_name .. "'."
+    )
+
+    return false
+  end
+
+  wezterm.log_info("ws: Saved workspace state '" .. workspace_name .. "'")
+
+  local path_msg = save_state.cwd and (' at ' .. save_state.cwd) or ''
+
+  UI.notify(
+    window,
+    'Workspace State Saved',
+    "Saved workspace state '" .. workspace_name .. "'" .. path_msg
+  )
+
+  return true
+end
+
+---@param result WsWezRestoreResult
 ---@param verb string|nil
 ---@return string
 function M.format_restore_summary(result, verb)
@@ -35,7 +72,7 @@ function M.format_restore_summary(result, verb)
   end
 
   if #result.failed > 0 then
-    summary = summary .. ', failed for: ' .. table.concat(result.failed, ', ')
+    summary = summary .. ', failed for: ' .. table_concat(result.failed, ', ')
   end
 
   return summary
@@ -50,7 +87,7 @@ function M.rename_workspace()
         return
       end
 
-      wezterm.mux.rename_workspace(wezterm.mux.get_active_workspace(), line)
+      mux.rename_workspace(mux.get_active_workspace(), line)
     end),
   }
 end
@@ -77,35 +114,15 @@ end
 ---@return Action
 function M.save_workspace()
   return act.PromptInputLine {
-    description = '(wezterm) Save workspace as: ',
+    description = '(wezterm) Save current workspace state as: ',
     action = wezterm.action_callback(function(window, pane, line)
       if not has_text(line) then
         return
       end
 
-      local active_workspace = wezterm.mux.get_active_workspace()
+      local active_workspace = mux.get_active_workspace()
       local save_state = build_save_state(active_workspace, pane)
-      local ok = State.save_workspace_state(line, save_state)
-
-      if ok then
-        wezterm.log_info("ws: Saved workspace as '" .. line .. "'")
-
-        local path_msg = save_state.cwd and (' at ' .. save_state.cwd) or ''
-
-        UI.notify(
-          window,
-          'Workspace Saved',
-          "Saved workspace '" .. line .. "'" .. path_msg
-        )
-        return
-      end
-
-      wezterm.log_warn("ws: Failed to save workspace '" .. line .. "'")
-      UI.notify(
-        window,
-        'Workspace Save Failed',
-        "Failed to save workspace as '" .. line .. "'."
-      )
+      persist_workspace_state(window, line, save_state)
     end),
   }
 end
@@ -113,71 +130,49 @@ end
 ---@return Action
 function M.save_current_workspace()
   return wezterm.action_callback(function(window, pane)
-    local active_workspace = wezterm.mux.get_active_workspace()
+    local active_workspace = mux.get_active_workspace()
     local save_state = build_save_state(active_workspace, pane)
-    local ok = State.save_workspace_state(active_workspace, save_state)
-
-    if ok then
-      wezterm.log_info("ws: Saved workspace '" .. active_workspace .. "'")
-
-      local path_msg = save_state.cwd and (' at ' .. save_state.cwd) or ''
-
-      UI.notify(
-        window,
-        'Workspace Saved',
-        "Saved workspace '" .. active_workspace .. "'" .. path_msg
-      )
-      return
-    end
-
-    wezterm.log_warn("ws: Failed to save workspace '" .. active_workspace .. "'")
-    UI.notify(
-      window,
-      'Workspace Save Failed',
-      "Failed to save workspace '" .. active_workspace .. "'."
-    )
+    persist_workspace_state(window, active_workspace, save_state)
   end)
 end
 
 ---@return Action
 function M.save_all_workspaces()
   return wezterm.action_callback(function(window, pane)
-    local workspace_names = wezterm.mux.get_workspace_names()
-    local active_workspace = wezterm.mux.get_active_workspace()
+    local workspace_names = mux.get_workspace_names()
+    local active_workspace = mux.get_active_workspace()
+    local workspace_paths = Cwd.get_workspace_paths(active_workspace, pane)
 
-    table.sort(workspace_names)
-
-    local timestamp = os.time()
+    local timestamp = os_time()
     local workspace_states = {}
 
     for _, workspace_name in ipairs(workspace_names) do
-      workspace_states[workspace_name] = build_save_state(
-        workspace_name,
-        workspace_name == active_workspace and pane or nil,
-        timestamp
-      )
+      workspace_states[workspace_name] = {
+        cwd = workspace_paths[workspace_name],
+        timestamp = timestamp,
+      }
     end
 
     local saved = #workspace_names
 
     if State.save_workspace_states(workspace_states) then
-      wezterm.log_info('ws: Saved ' .. saved .. ' workspaces')
+      wezterm.log_info('ws: Saved workspace state for ' .. saved .. ' workspaces')
       UI.notify(
         window,
-        'Workspaces Saved',
-        'Saved ' .. saved .. ' workspaces successfully.'
+        'Workspace States Saved',
+        'Saved workspace state for ' .. saved .. ' workspaces successfully.'
       )
       return
     end
 
-    local failed = workspace_names
-    local summary = 'Saved '
-      .. 0
-      .. ' workspaces, failed for: '
-      .. table.concat(failed, ', ')
+    local summary = string_format(
+      'Saved workspace state for %d workspaces, failed for: %s',
+      0,
+      table_concat(workspace_names, ', ')
+    )
 
     wezterm.log_warn('ws: ' .. summary)
-    UI.notify(window, 'Workspace Save Completed With Errors', summary)
+    UI.notify(window, 'Workspace State Save Completed With Errors', summary)
   end)
 end
 

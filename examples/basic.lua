@@ -1,9 +1,9 @@
 -- Minimal setup through the supported public plugin facade.
 
-local wezterm = require 'wezterm'
+local wezterm = require 'wezterm' ---@type Wezterm
 local ws = wezterm.plugin.require 'https://github.com/yriveiro/ws.wez'
 
-local config = wezterm.config_builder()
+local config = wezterm.config_builder() ---@type Config
 
 config.color_scheme = 'Tokyo Night'
 config.font = wezterm.font 'JetBrains Mono'

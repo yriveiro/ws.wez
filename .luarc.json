@@ -1,9 +1,9 @@
 {
   "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
-  "$comment": "Add your installed wezterm-types path to workspace.library in your editor or local override config.",
+  "$comment": "Add your installed wezterm-types path to workspace.library in your editor or local override config. This repo already exposes WsWezPlugin from plugin/ws/types.lua when the repo itself is part of the LuaLS workspace.",
   "runtime": {
     "version": "Lua 5.4",
-    "path": ["plugin/?.lua"]
+    "path": ["plugin/?.lua", "plugin/?/init.lua"]
   },
   "workspace": {
     "checkThirdParty": true,

@@ -8,15 +8,14 @@ Compact workspace picker for [WezTerm](https://wezfurlong.org/wezterm/index.html
 ## Install
 
 ```lua
-local wezterm = require 'wezterm'
+local wezterm = require 'wezterm' ---@type Wezterm
+local ws = wezterm.plugin.require 'https://github.com/yriveiro/ws.wez'
 
-local config = wezterm.config_builder()
+local config = wezterm.config_builder() ---@type Config
 
 config.leader = { key = 'Space', mods = 'CTRL', timeout_milliseconds = 1000 }
 
-wezterm.plugin
-  .require('https://github.com/yriveiro/ws.wez')
-  .apply_to_config(config)
+ws.apply_to_config(config)
 
 return config
 ```
@@ -26,10 +25,10 @@ return config
 `apply_to_config(config, opts)` is the main entrypoint. Pass options there to keep the plugin setup in one place.
 
 ```lua
-local wezterm = require 'wezterm'
+local wezterm = require 'wezterm' ---@type Wezterm
 local ws = wezterm.plugin.require 'https://github.com/yriveiro/ws.wez'
 
-local config = wezterm.config_builder()
+local config = wezterm.config_builder() ---@type Config
 
 config.leader = { key = 'Space', mods = 'CTRL', timeout_milliseconds = 1000 }
 
@@ -59,8 +58,13 @@ return config
 ## Usage
 
 - `LEADER` + `w`: open the workspace selector
-- `s`: save all live workspaces from the selector
-- `d`: open the saved-workspace delete menu
+- Live workspaces: switch, create, rename, and delete live mux workspaces
+- Saved workspace states: save current, save all, restore saved, and delete saved state entries
+- `s`: save the current workspace state from the selector
+- `a`: save all live workspace states from the selector
+- `o`: restore a saved workspace state
+- `x`: delete a saved workspace state
+- `d`: delete a live workspace
 - `c`: create a workspace manually
 - `e`: rename the current workspace
 - `/`: start fuzzy search in the selector
@@ -81,15 +85,19 @@ Supported entrypoints are:
 - `ws.setup(...)`
 - `ws.apply_to_config(...)`
 - `ws.show_workspace_selector(...)`
-- `ws.save_workspace()`
+- `ws.save_current_workspace()`
+- `ws.save_workspace_as()`
 - `ws.save_all_workspaces()`
 - `ws.show_restore_menu(...)`
+- `ws.show_delete_live_menu(...)`
 - `ws.show_delete_menu(...)`
+- `ws.show_delete_saved_menu(...)`
 - `ws.restore_all_workspaces()`
 - `ws.restore_workspaces_on_gui_startup(...)`
 - `ws.get_data_dir()`
 - `ws.rename_workspace()`
 - `ws.create_workspace_manually()`
+- Compatibility aliases: `ws.save_workspace()`, `ws.show_delete_menu(...)`
 
 Direct imports of internal runtime modules under `plugin/ws/*.lua` are not part of the supported public API.
 
@@ -114,14 +122,24 @@ That mirrors the multi-file plugin-loading pattern used by [`wezterm-status`](ht
 
 See [`docs/configuration.md`](docs/configuration.md) for defaults, field-level reference, and the full public API.
 
+## Compatibility
+
+- `ws.save_workspace()` is kept as an alias for `ws.save_workspace_as()`
+- `ws.show_delete_menu(...)` is kept as an alias for `ws.show_delete_live_menu(...)`
+
 ## Type Annotations
 
-With [wezterm-types](https://github.com/DrKJeff16/wezterm-types), you can annotate the plugin value in your config:
+With [wezterm-types](https://github.com/DrKJeff16/wezterm-types), annotate the built-in WezTerm values in your config:
 
 ```lua
----@type WorkspacePicker
+local wezterm = require 'wezterm' ---@type Wezterm
+local config = wezterm.config_builder() ---@type Config
 local ws = wezterm.plugin.require 'https://github.com/yriveiro/ws.wez'
 ```
+
+`wezterm-types` currently provides WezTerm API annotations like `Wezterm`, `Config`, `Window`, and `Pane`; it does not currently ship a `ws.wez` plugin facade annotation.
+
+This repository declares its own plugin facade type as `WsWezPlugin` in `plugin/ws/types.lua`, so it is available while editing this repo or if you add this plugin checkout to your LuaLS `workspace.library`.
 
 ## License
 
