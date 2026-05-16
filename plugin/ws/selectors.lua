@@ -324,8 +324,9 @@ local function get_delete_fallback_workspace_name(workspace_name)
 end
 
 ---@param workspace_name string
+---@param cwd string|nil
 ---@return boolean, string|nil
-local function activate_workspace(workspace_name)
+local function activate_workspace(workspace_name, cwd)
   for _, name in ipairs(mux.get_workspace_names()) do
     if name == workspace_name then
       local ok, err = pcall(mux.set_active_workspace, workspace_name)
@@ -334,9 +335,15 @@ local function activate_workspace(workspace_name)
     end
   end
 
-  local spawned, spawn_err = pcall(mux.spawn_window, {
+  local spawn_args = {
     workspace = workspace_name,
-  })
+  }
+
+  if type(cwd) == 'string' and cwd ~= '' then
+    spawn_args.cwd = cwd
+  end
+
+  local spawned, spawn_err = pcall(mux.spawn_window, spawn_args)
 
   if not spawned then
     return false, spawn_err
@@ -413,21 +420,27 @@ function M.show_restore_menu(window, pane)
       end
 
       local existing = State.get_restored_workspaces()
-      local switch_args = {
-        name = saved_name,
-      }
 
-      if
-        not existing[saved_name]
-        and type(saved_state.cwd) == 'string'
-        and saved_state.cwd ~= ''
-      then
-        switch_args.spawn = {
-          cwd = saved_state.cwd,
-        }
+      if existing[saved_name] then
+        win:perform_action(act.SwitchToWorkspace { name = saved_name }, current_pane)
+      else
+        local activated, activate_err = activate_workspace(saved_name, saved_state.cwd)
+
+        if not activated then
+          wezterm.log_warn(
+            "ws: Failed to restore workspace '"
+              .. saved_name
+              .. "': "
+              .. tostring(activate_err)
+          )
+          UI.notify(
+            win,
+            'Workspace Restore Failed',
+            "Failed to restore workspace '" .. saved_name .. "'."
+          )
+          return
+        end
       end
-
-      win:perform_action(act.SwitchToWorkspace(switch_args), current_pane)
 
       wezterm.log_info("ws: Restored workspace '" .. saved_name .. "'")
       UI.notify(win, 'Workspace Restored', "Restored workspace '" .. saved_name .. "'.")
