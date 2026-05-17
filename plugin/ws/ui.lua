@@ -20,6 +20,7 @@ local selector_separator =
 local no_workspaces_body = 'No live workspaces found.'
 local no_saved_workspaces_body =
   'No saved workspace states found. Open the selector, then press s or a.'
+local disable_reverse_video = '\x1b[27m'
 
 ---@param window Window
 ---@param title string
@@ -87,38 +88,56 @@ local function join_icon_and_text(icon, text)
   return table_concat(parts, ' ')
 end
 
----@param parts string[]
----@param value string
-local function append_part(parts, value)
-  if type(value) ~= 'string' or value == '' then
-    return
-  end
-
-  table_insert(parts, value)
+---@return table[], { has_content: boolean }
+local function start_label()
+  return {
+    { Text = disable_reverse_video },
+  }, { has_content = false }
 end
 
 ---@param elements table[]
+---@param state { has_content: boolean }
 ---@param color string
----@param parts string[]
-local function append_row(elements, color, parts)
-  if #parts == 0 then
+---@param text string
+---@param intensity 'Normal'|'Half'|'Bold'|nil
+local function append_segment(elements, state, color, text, intensity)
+  if text == '' then
     return
   end
 
+  if state.has_content then
+    table_insert(elements, { Text = ' ' })
+  else
+    state.has_content = true
+  end
+
   table_insert(elements, { Foreground = { Color = color } })
-  table_insert(elements, { Text = table_concat(parts, ' ') })
+
+  if intensity and intensity ~= 'Normal' then
+    table_insert(elements, { Attribute = { Intensity = intensity } })
+  end
+
+  table_insert(elements, { Text = text })
+
+  if intensity and intensity ~= 'Normal' then
+    table_insert(elements, { Attribute = { Intensity = 'Normal' } })
+  end
 end
 
 ---@param text string
 ---@param config WsWezResolvedConfig
 ---@return string
 function M.format_action_label(text, config)
-  local parts = {}
-  local label = {}
+  local label, state = start_label()
 
-  append_part(parts, join_icon_and_text(resolve_style_component(config.style.action), ''))
-  append_part(parts, text)
-  append_row(label, config.colors.action_prefix, parts)
+  append_segment(
+    label,
+    state,
+    config.colors.action_prefix,
+    join_icon_and_text(resolve_style_component(config.style.action), ''),
+    nil
+  )
+  append_segment(label, state, config.colors.text, text, nil)
 
   return wezterm_format(label)
 end
@@ -132,33 +151,42 @@ function M.format_live_workspace_label(name, is_current, pane_count, config)
   local colors = config.colors
   local labels = config.labels
   local style = config.style
-  local parts = {}
+  local label, state = start_label()
   local pane_count_parts = {}
-  local label = {}
 
-  append_part(pane_count_parts, resolve_style_component(style.pane_count))
-  append_part(pane_count_parts, tostring(pane_count))
+  table_insert(pane_count_parts, tostring(pane_count))
 
-  append_part(
-    parts,
-    join_icon_and_text(
-      resolve_style_component(style.workspace),
-      labels.workspace
-    )
-  )
-  append_part(parts, name)
-  append_part(parts, '(' .. table_concat(pane_count_parts, ' ') .. ')')
-  if is_current then
-    append_part(
-      parts,
-      join_icon_and_text(
-        resolve_style_component(style.current),
-        labels.current
-      )
-    )
+  local pane_count_icon = resolve_style_component(style.pane_count)
+
+  if pane_count_icon ~= '' then
+    table_insert(pane_count_parts, 1, pane_count_icon)
   end
 
-  append_row(label, is_current and colors.current_indicator or colors.workspace_prefix, parts)
+  append_segment(
+    label,
+    state,
+    colors.workspace_prefix,
+    join_icon_and_text(resolve_style_component(style.workspace), labels.workspace),
+    nil
+  )
+  append_segment(label, state, colors.text, name, nil)
+  append_segment(
+    label,
+    state,
+    colors.pane_count,
+    '(' .. table_concat(pane_count_parts, ' ') .. ')',
+    'Half'
+  )
+
+  if is_current then
+    append_segment(
+      label,
+      state,
+      colors.current_indicator,
+      join_icon_and_text(resolve_style_component(style.current), labels.current),
+      nil
+    )
+  end
 
   return wezterm_format(label)
 end
@@ -167,19 +195,19 @@ end
 ---@param config WsWezResolvedConfig
 ---@return string
 function M.format_directory_label(directory, config)
-  local parts = {}
-  local label = {}
+  local colors = config.colors
+  local labels = config.labels
+  local label, state = start_label()
 
-  append_part(
-    parts,
-    join_icon_and_text(
-      resolve_style_component(config.style.zoxide),
-      config.labels.zoxide
-    )
+  append_segment(
+    label,
+    state,
+    colors.zoxide_prefix,
+    join_icon_and_text(resolve_style_component(config.style.zoxide), labels.zoxide),
+    nil
   )
-  append_part(parts, Utils.basename(directory))
-  append_part(parts, '(' .. directory .. ')')
-  append_row(label, config.colors.zoxide_prefix, parts)
+  append_segment(label, state, colors.text, Utils.basename(directory), nil)
+  append_segment(label, state, colors.path, '(' .. directory .. ')', nil)
 
   return wezterm_format(label)
 end
@@ -190,8 +218,7 @@ end
 ---@return string
 function M.format_saved_workspace_label(saved_name, state, config)
   local details = {}
-  local parts = {}
-  local label = {}
+  local label, segment_state = start_label()
 
   if
     type(state) == 'table'
@@ -205,12 +232,17 @@ function M.format_saved_workspace_label(saved_name, state, config)
     table_insert(details, state.cwd)
   end
 
-  append_part(parts, saved_name)
-  if #details > 0 then
-    append_part(parts, '(' .. table_concat(details, ' | ') .. ')')
-  end
+  append_segment(label, segment_state, config.colors.text, saved_name, nil)
 
-  append_row(label, config.colors.text, parts)
+  if #details > 0 then
+    append_segment(
+      label,
+      segment_state,
+      config.colors.path,
+      '(' .. table_concat(details, ' | ') .. ')',
+      nil
+    )
+  end
 
   return wezterm_format(label)
 end

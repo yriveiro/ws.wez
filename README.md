@@ -67,7 +67,6 @@ return config
 ## Usage
 
 - `LEADER` + `w`: open the workspace selector
-- Selector rows use a compact, consistent layout so the highlighted entry stays visually uniform while navigating
 - Live workspaces: switch, create, rename, and delete live mux workspaces
 - Live workspace entries show the current workspace marker and live pane counts
 - Saved workspace states: save current, save all, restore saved, and delete saved state entries
@@ -126,7 +125,7 @@ That mirrors the multi-file plugin-loading pattern used by [`wezterm-status`](ht
 ## Options
 
 - `zoxide_path`: path to the `zoxide` executable
-- `colors`: row-level selector colors for actions, live workspaces, zoxide entries, and saved entry text
+- `colors`: selector colors
 - `labels`: optional selector text shown next to icons
 - `style`: selector icon names or literal glyphs
 - `activate_keytable`: default opener binding, or `false` to disable it

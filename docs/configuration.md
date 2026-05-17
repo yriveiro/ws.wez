@@ -40,7 +40,7 @@ Path to the `zoxide` executable used for directory-backed workspace creation.
 
 ### `colors`
 
-Controls selector row colors.
+Controls selector colors.
 
 ```lua
 colors = {
@@ -54,13 +54,13 @@ colors = {
 }
 ```
 
-- `action_prefix`: action row color
-- `workspace_prefix`: live workspace row color
-- `zoxide_prefix`: zoxide entry row color
-- `current_indicator`: current live workspace row color
-- `pane_count`: reserved for pane-count styling compatibility
-- `text`: main text color for saved workspace rows
-- `path`: reserved for secondary metadata styling compatibility
+- `action_prefix`: action entry icon color
+- `workspace_prefix`: live workspace label color
+- `zoxide_prefix`: zoxide entry label color
+- `current_indicator`: active workspace marker color
+- `pane_count`: live pane count color
+- `text`: main item text color
+- `path`: zoxide path color
 
 ### `labels`
 
