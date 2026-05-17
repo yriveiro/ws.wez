@@ -2,7 +2,6 @@ local wezterm = require 'wezterm' ---@type Wezterm
 local act = wezterm.action
 
 local os_date = os.date
-local string_format = string.format
 local table_concat = table.concat
 local table_insert = table.insert
 local tostring = tostring
@@ -71,46 +70,55 @@ local function resolve_style_component(value)
   return wezterm_nerdfonts[value] or value
 end
 
----@param elements table[]
----@param color string
 ---@param icon string
 ---@param text string
-local function append_icon_and_text(elements, color, icon, text)
-  if icon == '' and text == '' then
+---@return string
+local function join_icon_and_text(icon, text)
+  local parts = {}
+
+  if icon ~= '' then
+    table_insert(parts, icon)
+  end
+
+  if text ~= '' then
+    table_insert(parts, text)
+  end
+
+  return table_concat(parts, ' ')
+end
+
+---@param parts string[]
+---@param value string
+local function append_part(parts, value)
+  if type(value) ~= 'string' or value == '' then
+    return
+  end
+
+  table_insert(parts, value)
+end
+
+---@param elements table[]
+---@param color string
+---@param parts string[]
+local function append_row(elements, color, parts)
+  if #parts == 0 then
     return
   end
 
   table_insert(elements, { Foreground = { Color = color } })
-
-  if icon ~= '' then
-    table_insert(elements, { Text = icon })
-  end
-
-  if text ~= '' then
-    if icon ~= '' then
-      table_insert(elements, { Text = ' ' })
-    end
-
-    table_insert(elements, { Text = text })
-  end
-
-  table_insert(elements, { Text = ' ' })
+  table_insert(elements, { Text = table_concat(parts, ' ') })
 end
 
 ---@param text string
 ---@param config WsWezResolvedConfig
 ---@return string
 function M.format_action_label(text, config)
+  local parts = {}
   local label = {}
 
-  append_icon_and_text(
-    label,
-    config.colors.action_prefix,
-    resolve_style_component(config.style.action),
-    ''
-  )
-  table_insert(label, { Foreground = { Color = config.colors.text } })
-  table_insert(label, { Text = text })
+  append_part(parts, join_icon_and_text(resolve_style_component(config.style.action), ''))
+  append_part(parts, text)
+  append_row(label, config.colors.action_prefix, parts)
 
   return wezterm_format(label)
 end
@@ -124,39 +132,33 @@ function M.format_live_workspace_label(name, is_current, pane_count, config)
   local colors = config.colors
   local labels = config.labels
   local style = config.style
+  local parts = {}
+  local pane_count_parts = {}
   local label = {}
 
-  append_icon_and_text(
-    label,
-    colors.workspace_prefix,
-    resolve_style_component(style.workspace),
-    labels.workspace
+  append_part(pane_count_parts, resolve_style_component(style.pane_count))
+  append_part(pane_count_parts, tostring(pane_count))
+
+  append_part(
+    parts,
+    join_icon_and_text(
+      resolve_style_component(style.workspace),
+      labels.workspace
+    )
   )
-  table_insert(label, { Foreground = { Color = colors.text } })
-  table_insert(label, { Text = name })
-
-  table_insert(label, { Foreground = { Color = colors.pane_count } })
-  table_insert(label, { Attribute = { Intensity = 'Half' } })
-  table_insert(label, { Text = ' (' })
-
-  local pane_count_icon = resolve_style_component(style.pane_count)
-
-  if pane_count_icon ~= '' then
-    table_insert(label, { Text = pane_count_icon .. ' ' })
-  end
-
-  table_insert(label, { Text = tostring(pane_count) .. ')' })
-  table_insert(label, { Attribute = { Intensity = 'Normal' } })
-
+  append_part(parts, name)
+  append_part(parts, '(' .. table_concat(pane_count_parts, ' ') .. ')')
   if is_current then
-    table_insert(label, { Text = ' ' })
-    append_icon_and_text(
-      label,
-      colors.current_indicator,
-      resolve_style_component(style.current),
-      labels.current
+    append_part(
+      parts,
+      join_icon_and_text(
+        resolve_style_component(style.current),
+        labels.current
+      )
     )
   end
+
+  append_row(label, is_current and colors.current_indicator or colors.workspace_prefix, parts)
 
   return wezterm_format(label)
 end
@@ -165,20 +167,19 @@ end
 ---@param config WsWezResolvedConfig
 ---@return string
 function M.format_directory_label(directory, config)
-  local colors = config.colors
-  local labels = config.labels
+  local parts = {}
   local label = {}
 
-  append_icon_and_text(
-    label,
-    colors.zoxide_prefix,
-    resolve_style_component(config.style.zoxide),
-    labels.zoxide
+  append_part(
+    parts,
+    join_icon_and_text(
+      resolve_style_component(config.style.zoxide),
+      config.labels.zoxide
+    )
   )
-  table_insert(label, { Foreground = { Color = colors.text } })
-  table_insert(label, { Text = Utils.basename(directory) .. ' ' })
-  table_insert(label, { Foreground = { Color = colors.path } })
-  table_insert(label, { Text = '(' .. directory .. ')' })
+  append_part(parts, Utils.basename(directory))
+  append_part(parts, '(' .. directory .. ')')
+  append_row(label, config.colors.zoxide_prefix, parts)
 
   return wezterm_format(label)
 end
@@ -189,6 +190,8 @@ end
 ---@return string
 function M.format_saved_workspace_label(saved_name, state, config)
   local details = {}
+  local parts = {}
+  local label = {}
 
   if
     type(state) == 'table'
@@ -202,14 +205,12 @@ function M.format_saved_workspace_label(saved_name, state, config)
     table_insert(details, state.cwd)
   end
 
-  local label = {
-    { Text = string_format(' %s ', saved_name) },
-  }
-
+  append_part(parts, saved_name)
   if #details > 0 then
-    table_insert(label, { Foreground = { Color = config.colors.path } })
-    table_insert(label, { Text = '(' .. table_concat(details, ' | ') .. ')' })
+    append_part(parts, '(' .. table_concat(details, ' | ') .. ')')
   end
+
+  append_row(label, config.colors.text, parts)
 
   return wezterm_format(label)
 end
