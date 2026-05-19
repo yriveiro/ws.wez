@@ -21,7 +21,19 @@ local Zoxide = require 'ws.zoxide'
 local M = {}
 
 local live_workspace_prefix = 'ws:'
+local section_choice_prefix = 'section:'
 local zoxide_choice_prefix = 'zoxide:'
+
+---@param choices WsWezChoice[]
+---@param id_suffix string
+---@param title string
+---@param width integer
+local function append_section_separator(choices, id_suffix, title, width)
+  table_insert(choices, {
+    id = section_choice_prefix .. id_suffix,
+    label = UI.selector_separator(title, width),
+  })
+end
 
 ---@param saved_workspaces WsWezSavedWorkspaceIndex
 ---@return string[]
@@ -69,12 +81,44 @@ local function strip_prefix(value, prefix)
   end
 end
 
----@param config WsWezResolvedConfig
----@return WsWezChoice[]
-local function build_live_workspace_choices(config)
+---@param current_width integer
+---@param text string|nil
+---@return integer
+local function update_max_width(current_width, text)
+  local width = UI.display_width(text)
+
+  if width > current_width then
+    return width
+  end
+
+  return current_width
+end
+
+---@param widths integer[]
+---@return integer
+local function combine_segment_widths(widths)
+  local segment_count = 0
+  local total_width = 0
+
+  for _, width in ipairs(widths) do
+    if type(width) == 'number' and width > 0 then
+      segment_count = segment_count + 1
+      total_width = total_width + width
+    end
+  end
+
+  if segment_count > 1 then
+    total_width = total_width + segment_count - 1
+  end
+
+  return total_width
+end
+
+---@return { is_current: boolean, name: string, pane_count: integer }[]
+local function collect_live_workspace_entries()
   local current = mux.get_active_workspace()
   local pane_counts = {}
-  local workspace_choices = {}
+  local live_entries = {}
 
   for _, mux_window in ipairs(mux_all_windows() or {}) do
     local ok_workspace, workspace_name = pcall(mux_window.get_workspace, mux_window)
@@ -100,18 +144,160 @@ local function build_live_workspace_choices(config)
   end
 
   for _, name in ipairs(get_sorted_live_workspace_names()) do
+    table_insert(live_entries, {
+      is_current = name == current,
+      name = name,
+      pane_count = pane_counts[name] or 0,
+    })
+  end
+
+  return live_entries
+end
+
+---@param config WsWezResolvedConfig
+---@param live_entries { is_current: boolean, name: string, pane_count: integer }[]
+---@param layout { current_width?: integer, name_width?: integer, pane_count_width?: integer, prefix_width?: integer }|nil
+---@return WsWezChoice[]
+local function build_live_workspace_choices(config, live_entries, layout)
+  local workspace_choices = {}
+
+  for _, entry in ipairs(live_entries) do
     table_insert(workspace_choices, {
-      id = live_workspace_prefix .. name,
+      id = live_workspace_prefix .. entry.name,
       label = UI.format_live_workspace_label(
-        name,
-        name == current,
-        pane_counts[name] or 0,
-        config
+        entry.name,
+        entry.is_current,
+        entry.pane_count,
+        config,
+        layout
       ),
     })
   end
 
   return workspace_choices
+end
+
+---@param config WsWezResolvedConfig
+---@param action_specs { id: string, text: string }[]
+---@param live_entries { is_current: boolean, name: string, pane_count: integer }[]
+---@param zoxide_dirs string[]
+---@return {
+---@  action: { prefix_width: integer, text_width: integer },
+---@  separator_width: integer,
+---@  workspace: { current_width: integer, name_width: integer, pane_count_width: integer, prefix_width: integer },
+---@  zoxide: { name_width: integer, prefix_width: integer },
+---@}
+local function build_workspace_selector_layout(config, action_specs, live_entries, zoxide_dirs)
+  local action_text_width = 0
+  local current_width = UI.display_width(UI.current_indicator_text(config))
+  local destination_name_width = 0
+  local max_row_width = 0
+  local pane_count_width = 0
+  local prefix_width = 0
+
+  prefix_width = update_max_width(prefix_width, UI.action_prefix_text(config))
+  prefix_width = update_max_width(prefix_width, UI.live_workspace_prefix_text(config))
+  prefix_width = update_max_width(prefix_width, UI.zoxide_prefix_text(config))
+
+  for _, spec in ipairs(action_specs) do
+    action_text_width = update_max_width(action_text_width, spec.text)
+  end
+
+  for _, entry in ipairs(live_entries) do
+    destination_name_width = update_max_width(destination_name_width, entry.name)
+    pane_count_width = update_max_width(
+      pane_count_width,
+      UI.live_workspace_pane_count_text(entry.pane_count, config)
+    )
+  end
+
+  for _, directory in ipairs(zoxide_dirs) do
+    destination_name_width = update_max_width(destination_name_width, Utils.basename(directory))
+  end
+
+  max_row_width = combine_segment_widths {
+    prefix_width,
+    action_text_width,
+  }
+  max_row_width = update_max_width(
+    max_row_width,
+    string.rep(
+      ' ',
+      combine_segment_widths {
+        prefix_width,
+        destination_name_width,
+        pane_count_width,
+        current_width,
+      }
+    )
+  )
+
+  for _, directory in ipairs(zoxide_dirs) do
+    local zoxide_row_width = combine_segment_widths {
+      prefix_width,
+      destination_name_width,
+      UI.display_width('(' .. directory .. ')'),
+    }
+
+    if zoxide_row_width > max_row_width then
+      max_row_width = zoxide_row_width
+    end
+  end
+
+  return {
+    action = {
+      prefix_width = prefix_width,
+      text_width = action_text_width,
+    },
+    separator_width = max_row_width,
+    workspace = {
+      current_width = current_width,
+      name_width = destination_name_width,
+      pane_count_width = pane_count_width,
+      prefix_width = prefix_width,
+    },
+    zoxide = {
+      name_width = destination_name_width,
+      prefix_width = prefix_width,
+    },
+  }
+end
+
+---@param config WsWezResolvedConfig
+---@param live_entries { is_current: boolean, name: string, pane_count: integer }[]
+---@return { current_width: integer, name_width: integer, pane_count_width: integer, prefix_width: integer }
+local function build_live_workspace_layout(config, live_entries)
+  local name_width = 0
+  local pane_count_width = 0
+
+  for _, entry in ipairs(live_entries) do
+    name_width = update_max_width(name_width, entry.name)
+    pane_count_width = update_max_width(
+      pane_count_width,
+      UI.live_workspace_pane_count_text(entry.pane_count, config)
+    )
+  end
+
+  return {
+    current_width = UI.display_width(UI.current_indicator_text(config)),
+    name_width = name_width,
+    pane_count_width = pane_count_width,
+    prefix_width = UI.display_width(UI.live_workspace_prefix_text(config)),
+  }
+end
+
+---@param saved_names string[]
+---@return { name_width: integer }
+local function build_saved_workspace_layout(saved_names)
+  local name_width = 0
+
+  for _, name in ipairs(saved_names) do
+    name_width = update_max_width(name_width, name)
+  end
+
+  return {
+    name_width = name_width,
+  }
 end
 
 ---@param config WsWezResolvedConfig
@@ -154,30 +340,39 @@ local function build_workspace_selector_choices(config)
 
   ---@type WsWezChoice[]
   local choices = {}
+  local live_entries = collect_live_workspace_entries()
+  local zoxide_dirs = Zoxide.get_directories()
+  local layout = build_workspace_selector_layout(config, action_specs, live_entries, zoxide_dirs)
+  local live_workspace_choices = build_live_workspace_choices(
+    config,
+    live_entries,
+    layout.workspace
+  )
+
+  append_section_separator(choices, 'options', 'options', layout.separator_width)
 
   for _, spec in ipairs(action_specs) do
     table_insert(choices, {
       id = spec.id,
-      label = UI.format_action_label(spec.text, config),
+      label = UI.format_action_label(spec.text, config, layout.action),
     })
   end
 
-  for _, choice in ipairs(build_live_workspace_choices(config)) do
-    table_insert(choices, choice)
-  end
+  if #live_workspace_choices > 0 then
+    append_section_separator(choices, 'workspaces', 'workspaces', layout.separator_width)
 
-  local zoxide_dirs = Zoxide.get_directories()
+    for _, choice in ipairs(live_workspace_choices) do
+      table_insert(choices, choice)
+    end
+  end
 
   if #zoxide_dirs > 0 then
-    table_insert(choices, {
-      id = 'separator',
-      label = UI.selector_separator(),
-    })
+    append_section_separator(choices, 'zoxide-entries', 'zoxide entries', layout.separator_width)
 
     for _, directory in ipairs(zoxide_dirs) do
       table_insert(choices, {
         id = zoxide_choice_prefix .. directory,
-        label = UI.format_directory_label(directory, config),
+        label = UI.format_directory_label(directory, config, layout.zoxide),
       })
     end
   end
@@ -214,6 +409,7 @@ local function show_saved_workspace_selector(window, pane, opts)
   local config = Config.get()
   local saved_workspaces = State.load_saved_workspaces()
   local saved_names = get_sorted_saved_workspace_names(saved_workspaces)
+  local layout = build_saved_workspace_layout(saved_names)
 
   if #saved_names == 0 then
     UI.notify_no_saved_workspaces(window)
@@ -226,7 +422,7 @@ local function show_saved_workspace_selector(window, pane, opts)
   for _, name in ipairs(saved_names) do
     table_insert(choices, {
       id = name,
-      label = UI.format_saved_workspace_label(name, saved_workspaces[name], config),
+      label = UI.format_saved_workspace_label(name, saved_workspaces[name], config, layout),
     })
   end
 
@@ -255,7 +451,9 @@ end
 ---@ }
 local function show_live_workspace_selector(window, pane, opts)
   local config = Config.get()
-  local choices = build_live_workspace_choices(config)
+  local live_entries = collect_live_workspace_entries()
+  local layout = build_live_workspace_layout(config, live_entries)
+  local choices = build_live_workspace_choices(config, live_entries, layout)
 
   if #choices == 0 then
     UI.notify_no_workspaces(window)
@@ -374,7 +572,7 @@ function M.show_workspace_selector(window, pane, callbacks)
     description = "(wezterm) Select workspace or directory: ['/': search]",
     fuzzy_description = '(wezterm) Select workspace or directory: ',
     on_select = function(win, current_pane, id)
-      if not id or id == 'separator' then
+      if not id or strip_prefix(id, section_choice_prefix) then
         return
       end
 

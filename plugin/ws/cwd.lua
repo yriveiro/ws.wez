@@ -21,22 +21,36 @@ local function decode_percent_encoded(text)
   return decoded
 end
 
----@param cwd string|Url|nil
+---@param path string
 ---@return string|nil
-function M.cwd_to_path(cwd)
-  if type(cwd) == 'table' then
-    if type(cwd.scheme) == 'string' and cwd.scheme ~= '' and cwd.scheme ~= 'file' then
-      return nil
-    end
-
-    if type(cwd.file_path) == 'string' and cwd.file_path ~= '' then
-      return cwd.file_path
-    end
-
+local function normalize_file_path(path)
+  if type(path) ~= 'string' or path == '' then
     return nil
   end
 
-  if type(cwd) ~= 'string' or cwd == '' then
+  path = decode_percent_encoded(path)
+
+  if is_windows then
+    path = path:gsub('^/([A-Za-z]:[/\\])', '%1'):gsub('/', '\\')
+  end
+
+  return path
+end
+
+---@param cwd string|Url|nil
+---@return string|nil
+function M.cwd_to_path(cwd)
+  if type(cwd) ~= 'string' then
+    local ok, text = pcall(tostring, cwd)
+
+    if not ok or type(text) ~= 'string' or text == '' then
+      return nil
+    end
+
+    cwd = text
+  end
+
+  if cwd == '' then
     return nil
   end
 
@@ -54,13 +68,7 @@ function M.cwd_to_path(cwd)
     return nil
   end
 
-  path = decode_percent_encoded(path)
-
-  if is_windows then
-    path = path:gsub('^/([A-Za-z]:[/\\])', '%1'):gsub('/', '\\')
-  end
-
-  return path
+  return normalize_file_path(path)
 end
 
 ---@param pane Pane|nil

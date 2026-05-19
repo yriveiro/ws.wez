@@ -5,6 +5,7 @@ local ipairs = ipairs
 local os_time = os.time
 local string_format = string.format
 local table_concat = table.concat
+local table_insert = table.insert
 local type = type
 
 local mux = wezterm.mux
@@ -24,19 +25,38 @@ end
 ---@param workspace_name string
 ---@param pane Pane|nil
 ---@param timestamp integer|nil
----@return WsWezSavedState
+---@return WsWezSavedState|nil
 local function build_save_state(workspace_name, pane, timestamp)
+  local cwd = Cwd.get_workspace_path(workspace_name, pane)
+
+  if not cwd then
+    return nil
+  end
+
   return {
-    cwd = Cwd.get_workspace_path(workspace_name, pane),
+    cwd = cwd,
     timestamp = timestamp or os_time(),
   }
 end
 
 ---@param window Window
 ---@param workspace_name string
----@param save_state WsWezSavedState
+---@param save_state WsWezSavedState|nil
 ---@return boolean
 local function persist_workspace_state(window, workspace_name, save_state)
+  if not save_state then
+    wezterm.log_warn(
+      "ws: Failed to capture cwd for workspace state '" .. workspace_name .. "'"
+    )
+    UI.notify(
+      window,
+      'Workspace State Save Failed',
+      "Failed to capture cwd for workspace state '" .. workspace_name .. "'."
+    )
+
+    return false
+  end
+
   if not State.save_workspace_state(workspace_name, save_state) then
     wezterm.log_warn("ws: Failed to save workspace state '" .. workspace_name .. "'")
     UI.notify(
@@ -50,7 +70,7 @@ local function persist_workspace_state(window, workspace_name, save_state)
 
   wezterm.log_info("ws: Saved workspace state '" .. workspace_name .. "'")
 
-  local path_msg = save_state.cwd and (' at ' .. save_state.cwd) or ''
+  local path_msg = ' at ' .. save_state.cwd
 
   UI.notify(
     window,
@@ -145,23 +165,43 @@ function M.save_all_workspaces()
 
     local timestamp = os_time()
     local workspace_states = {}
+    local unsaved = {}
 
     for _, workspace_name in ipairs(workspace_names) do
-      workspace_states[workspace_name] = {
-        cwd = workspace_paths[workspace_name],
-        timestamp = timestamp,
-      }
+      local cwd = workspace_paths[workspace_name]
+
+      if cwd then
+        workspace_states[workspace_name] = {
+          cwd = cwd,
+          timestamp = timestamp,
+        }
+      else
+        table_insert(unsaved, workspace_name)
+      end
     end
 
-    local saved = #workspace_names
+    local saved = #workspace_names - #unsaved
+
+    if saved == 0 then
+      local summary = 'Failed to capture cwd for: ' .. table_concat(unsaved, ', ')
+
+      wezterm.log_warn('ws: ' .. summary)
+      UI.notify(window, 'Workspace State Save Failed', summary)
+      return
+    end
 
     if State.save_workspace_states(workspace_states) then
-      wezterm.log_info('ws: Saved workspace state for ' .. saved .. ' workspaces')
-      UI.notify(
-        window,
-        'Workspace States Saved',
-        'Saved workspace state for ' .. saved .. ' workspaces successfully.'
-      )
+      local message = 'Saved workspace state for ' .. saved .. ' workspaces.'
+
+      if #unsaved > 0 then
+        message = message .. ' Skipped: ' .. table_concat(unsaved, ', ') .. '.'
+        wezterm.log_warn('ws: ' .. message)
+        UI.notify(window, 'Workspace State Save Completed With Errors', message)
+        return
+      end
+
+      wezterm.log_info('ws: ' .. message)
+      UI.notify(window, 'Workspace States Saved', message)
       return
     end
 

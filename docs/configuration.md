@@ -51,6 +51,7 @@ colors = {
   pane_count = '#ff9e64',
   text = '#c8d0e0',
   path = '#565f89',
+  separator = '#6c7086',
 }
 ```
 
@@ -61,6 +62,7 @@ colors = {
 - `pane_count`: live pane count color
 - `text`: main item text color
 - `path`: zoxide path color
+- `separator`: section separator color
 
 ### `labels`
 
@@ -144,15 +146,15 @@ Compatibility alias for `save_workspace_as()`.
 
 ### `save_workspace_as()`
 
-Return a WezTerm action that prompts for a saved state name and saves the active live workspace under that name.
+Return a WezTerm action that prompts for a saved state name and saves the active live workspace under that name. If the saved entry already exists, it is updated in place. Saves fail when the current `cwd` cannot be captured.
 
 ### `save_current_workspace()`
 
-Return a WezTerm action that saves the active live workspace under its current name.
+Return a WezTerm action that saves the active live workspace under its current name. Existing saved entries with the same name are updated in place. Saves fail when the current `cwd` cannot be captured.
 
 ### `save_all_workspaces()`
 
-Return a WezTerm action that saves workspace state for all live workspaces.
+Return a WezTerm action that saves workspace state for all live workspaces. Existing saved entries with the same names are updated in place. Workspaces whose `cwd` cannot be captured are skipped.
 
 ### `show_restore_menu(window, pane)`
 

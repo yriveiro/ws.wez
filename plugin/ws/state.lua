@@ -90,17 +90,18 @@ local function is_valid_workspace_name(workspace_name)
 end
 
 ---@param state WsWezSavedState|nil
----@return WsWezSavedState
+---@return WsWezSavedState|nil
 local function normalize_workspace_state(state)
   state = state or {}
 
+  if type(state.cwd) ~= 'string' or state.cwd == '' then
+    return nil
+  end
+
   local normalized = {
+    cwd = state.cwd,
     timestamp = tonumber(state.timestamp) or 0,
   }
-
-  if type(state.cwd) == 'string' and state.cwd ~= '' then
-    normalized.cwd = state.cwd
-  end
 
   return normalized
 end
@@ -123,17 +124,16 @@ local function serialize_saved_workspaces(saved_workspaces)
   for _, workspace_name in ipairs(workspace_names) do
     local state = normalize_workspace_state(saved_workspaces[workspace_name])
 
-    table_insert(lines, string_format('  [%q] = {', workspace_name))
-
-    if type(state.cwd) == 'string' and state.cwd ~= '' then
+    if state then
+      table_insert(lines, string_format('  [%q] = {', workspace_name))
       table_insert(lines, string_format('    cwd = %q,', state.cwd))
-    end
 
-    table_insert(
-      lines,
-      string_format('    timestamp = %d,', tonumber(state.timestamp) or 0)
-    )
-    table_insert(lines, '  },')
+      table_insert(
+        lines,
+        string_format('    timestamp = %d,', tonumber(state.timestamp) or 0)
+      )
+      table_insert(lines, '  },')
+    end
   end
 
   table_insert(lines, '}')
@@ -198,7 +198,11 @@ local function load_saved_workspaces()
 
   for workspace_name, workspace_state in pairs(state) do
     if type(workspace_name) == 'string' and type(workspace_state) == 'table' then
-      saved_workspaces[workspace_name] = normalize_workspace_state(workspace_state)
+      local normalized = normalize_workspace_state(workspace_state)
+
+      if normalized then
+        saved_workspaces[workspace_name] = normalized
+      end
     end
   end
 
@@ -328,9 +332,15 @@ function M.save_workspace_state(workspace_name, state)
     return false
   end
 
+  local normalized = normalize_workspace_state(state)
+
+  if not normalized then
+    return false
+  end
+
   local saved_workspaces = load_saved_workspaces()
 
-  saved_workspaces[workspace_name] = normalize_workspace_state(state)
+  saved_workspaces[workspace_name] = normalized
 
   return write_saved_workspaces(saved_workspaces)
 end
@@ -339,10 +349,25 @@ end
 ---@return boolean
 function M.save_workspace_states(workspace_states)
   local saved_workspaces = load_saved_workspaces()
+  local valid_workspace_names = {}
 
   for workspace_name, state in pairs(workspace_states) do
     if is_valid_workspace_name(workspace_name) then
-      saved_workspaces[workspace_name] = normalize_workspace_state(state)
+      valid_workspace_names[workspace_name] = true
+
+      local normalized = normalize_workspace_state(state)
+
+      if normalized then
+        saved_workspaces[workspace_name] = normalized
+      else
+        saved_workspaces[workspace_name] = nil
+      end
+    end
+  end
+
+  for workspace_name in pairs(saved_workspaces) do
+    if valid_workspace_names[workspace_name] and not workspace_states[workspace_name] then
+      saved_workspaces[workspace_name] = nil
     end
   end
 

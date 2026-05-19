@@ -44,6 +44,7 @@ ws.apply_to_config(config, {
     pane_count = '#ffb86c',
     text = '#cdd6f4',
     path = '#6c7086',
+    separator = '#6c7086',
   },
   labels = {
     workspace = '',
@@ -70,6 +71,8 @@ return config
 - Live workspaces: switch, create, rename, and delete live mux workspaces
 - Live workspace entries show the current workspace marker and live pane counts
 - Saved workspace states: save current, save all, restore saved, and delete saved state entries
+- Saved workspace states always include `cwd`
+- Old saved entries without `cwd` are dropped on the next save; re-save a workspace to recreate them
 - `s`: save the current workspace state from the selector
 - `a`: save all live workspace states from the selector
 - `o`: restore a saved workspace state
@@ -80,7 +83,7 @@ return config
 - `/`: start fuzzy search in the selector
 - Startup restore runs once during `gui-startup`
 - Startup restore skips workspaces that are already live
-- Restored workspaces reuse the saved `cwd` when available
+- Restored workspaces reuse the saved `cwd`
 
 ## Supported Surface
 

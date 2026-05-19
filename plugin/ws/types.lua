@@ -3,6 +3,7 @@
 ---@field current_indicator? string
 ---@field pane_count? string
 ---@field path? string
+---@field separator? string
 ---@field text? string
 ---@field workspace_prefix? string
 ---@field zoxide_prefix? string
@@ -12,6 +13,7 @@
 ---@field current_indicator string
 ---@field pane_count string
 ---@field path string
+---@field separator string
 ---@field text string
 ---@field workspace_prefix string
 ---@field zoxide_prefix string
@@ -65,7 +67,7 @@
 ---@field label string
 
 ---@class WsWezSavedState
----@field cwd? string
+---@field cwd string
 ---@field timestamp? integer
 
 ---@alias WsWezSavedWorkspaceIndex table<string, WsWezSavedState>

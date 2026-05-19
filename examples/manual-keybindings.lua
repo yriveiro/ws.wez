@@ -21,6 +21,7 @@ ws.setup {
     pane_count = '#ff9e64',
     text = '#c8d0e0',
     path = '#565f89',
+    separator = '#6c7086',
   },
   style = {
     action = 'seti_config',

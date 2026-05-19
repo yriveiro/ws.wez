@@ -21,6 +21,7 @@ ws.apply_to_config(config, {
     pane_count = '#ffb86c',
     text = '#cdd6f4',
     path = '#6c7086',
+    separator = '#6c7086',
   },
   labels = {
     workspace = '',
