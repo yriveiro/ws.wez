@@ -118,6 +118,16 @@ local function join_icon_and_text(icon, text)
 end
 
 ---@param text string|nil
+---@return string
+local function surround_with_space(text)
+  if type(text) ~= 'string' or text == '' then
+    return ''
+  end
+
+  return ' ' .. text .. ' '
+end
+
+---@param text string|nil
 ---@return integer
 display_width = function(text)
   if type(text) ~= 'string' or text == '' then
@@ -159,25 +169,31 @@ end
 ---@param config WsWezResolvedConfig
 ---@return string
 function M.action_prefix_text(config)
-  return join_icon_and_text(resolve_style_component(config.style.action), '')
+  return surround_with_space(join_icon_and_text(resolve_style_component(config.style.action), ''))
 end
 
 ---@param config WsWezResolvedConfig
 ---@return string
 function M.live_workspace_prefix_text(config)
-  return join_icon_and_text(resolve_style_component(config.style.workspace), config.labels.workspace)
+  return surround_with_space(
+    join_icon_and_text(resolve_style_component(config.style.workspace), config.labels.workspace)
+  )
 end
 
 ---@param config WsWezResolvedConfig
 ---@return string
 function M.current_indicator_text(config)
-  return join_icon_and_text(resolve_style_component(config.style.current), config.labels.current)
+  return surround_with_space(
+    join_icon_and_text(resolve_style_component(config.style.current), config.labels.current)
+  )
 end
 
 ---@param config WsWezResolvedConfig
 ---@return string
 function M.zoxide_prefix_text(config)
-  return join_icon_and_text(resolve_style_component(config.style.zoxide), config.labels.zoxide)
+  return surround_with_space(
+    join_icon_and_text(resolve_style_component(config.style.zoxide), config.labels.zoxide)
+  )
 end
 
 ---@param pane_count integer
@@ -193,7 +209,7 @@ function M.live_workspace_pane_count_text(pane_count, config)
     table_insert(pane_count_parts, 1, pane_count_icon)
   end
 
-  return '(' .. table_concat(pane_count_parts, ' ') .. ')'
+  return surround_with_space('(' .. table_concat(pane_count_parts, ' ') .. ')')
 end
 
 ---@return table[], { has_content: boolean }
