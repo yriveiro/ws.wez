@@ -91,6 +91,7 @@
 ---@field restore_attempted_on_gui_startup? boolean
 
 ---@class WsWezInputSelectorOpts
+---@field alphabet? string
 ---@field choices WsWezChoice[]
 ---@field description string
 ---@field fuzzy_description string

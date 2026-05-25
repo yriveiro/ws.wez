@@ -12,7 +12,6 @@ local wezterm_format = wezterm.format
 local wezterm_column_width = wezterm.column_width
 local wezterm_nerdfonts = wezterm.nerdfonts or {}
 
-local Config = require 'ws.config'
 local Utils = require 'ws.utils'
 
 local M = {}
@@ -51,7 +50,7 @@ function M.show_input_selector(window, pane, opts)
       action = wezterm.action_callback(opts.on_select),
       title = opts.title,
       choices = opts.choices,
-      alphabet = selector_alphabet,
+      alphabet = opts.alphabet or selector_alphabet,
       description = opts.description,
       fuzzy_description = opts.fuzzy_description,
     },
@@ -59,35 +58,9 @@ function M.show_input_selector(window, pane, opts)
   )
 end
 
----@param title string|nil
----@param width integer|nil
 ---@return string
-function M.selector_separator(title, width)
-  local content
-  local colors = Config.get().colors
-  local content_width = type(width) == 'number' and width or 0
-
-  if type(title) ~= 'string' or title == '' then
-    content = string_rep('─', content_width)
-  else
-    local title_width = display_width(title)
-    local remaining_width = content_width - title_width - 1
-
-    if remaining_width <= 0 then
-      content = title
-    else
-      content = title .. ' ' .. string_rep('─', remaining_width)
-    end
-  end
-
-  return wezterm_format {
-    { Text = selector_padding },
-    { Foreground = { Color = colors.separator } },
-    { Attribute = { Intensity = 'Half' } },
-    { Text = content },
-    { Attribute = { Intensity = 'Normal' } },
-    { Text = selector_padding },
-  }
+function M.default_selector_alphabet()
+  return selector_alphabet
 end
 
 ---@param value string|nil
@@ -256,15 +229,30 @@ local function append_segment(elements, state, color, text, intensity)
   end
 end
 
+---@param elements table[]
+---@param state { has_content: boolean }
+---@param title string|nil
+---@param config WsWezResolvedConfig
+local function append_section_title(elements, state, title, config)
+  if type(title) ~= 'string' or title == '' then
+    return
+  end
+
+  append_segment(elements, state, config.colors.separator, title, 'Half')
+  append_segment(elements, state, config.colors.separator, '─', 'Half')
+end
+
 ---@param text string
 ---@param config WsWezResolvedConfig
 ---@param layout { prefix_width?: integer, text_width?: integer }|nil
+---@param section_title string|nil
 ---@return string
-function M.format_action_label(text, config, layout)
+function M.format_action_label(text, config, layout, section_title)
   local label, state = start_label()
   local prefix_text = pad_text(M.action_prefix_text(config), layout and layout.prefix_width)
   local action_text = pad_text(text, layout and layout.text_width)
 
+  append_section_title(label, state, section_title, config)
   append_segment(
     label,
     state,
@@ -282,8 +270,9 @@ end
 ---@param pane_count integer
 ---@param config WsWezResolvedConfig
 ---@param layout { current_width?: integer, name_width?: integer, pane_count_width?: integer, prefix_width?: integer }|nil
+---@param section_title string|nil
 ---@return string
-function M.format_live_workspace_label(name, is_current, pane_count, config, layout)
+function M.format_live_workspace_label(name, is_current, pane_count, config, layout, section_title)
   local colors = config.colors
   local label, state = start_label()
   local prefix_text = pad_text(M.live_workspace_prefix_text(config), layout and layout.prefix_width)
@@ -291,6 +280,7 @@ function M.format_live_workspace_label(name, is_current, pane_count, config, lay
   local pane_count_text =
     pad_text(M.live_workspace_pane_count_text(pane_count, config), layout and layout.pane_count_width)
 
+  append_section_title(label, state, section_title, config)
   append_segment(
     label,
     state,
@@ -323,13 +313,15 @@ end
 ---@param directory string
 ---@param config WsWezResolvedConfig
 ---@param layout { name_width?: integer, prefix_width?: integer }|nil
+---@param section_title string|nil
 ---@return string
-function M.format_directory_label(directory, config, layout)
+function M.format_directory_label(directory, config, layout, section_title)
   local colors = config.colors
   local label, state = start_label()
   local prefix_text = pad_text(M.zoxide_prefix_text(config), layout and layout.prefix_width)
   local directory_name = pad_text(Utils.basename(directory), layout and layout.name_width)
 
+  append_section_title(label, state, section_title, config)
   append_segment(
     label,
     state,

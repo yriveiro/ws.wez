@@ -73,13 +73,14 @@ return config
 - Saved workspace states: save current, save all, restore saved, and delete saved state entries
 - Saved workspace states always include `cwd`
 - Old saved entries without `cwd` are dropped on the next save; re-save a workspace to recreate them
+- Native picker shortcuts: options use `s a o x c e d`, live workspaces prefer `1-0`, and zoxide rows use letters
 - `s`: save the current workspace state from the selector
 - `a`: save all live workspace states from the selector
 - `o`: restore a saved workspace state
 - `x`: delete a saved workspace state
-- `d`: delete a live workspace
 - `c`: create a workspace manually
 - `e`: rename the current workspace
+- `d`: delete a live workspace
 - `/`: start fuzzy search in the selector
 - Startup restore runs once during `gui-startup`
 - Startup restore skips workspaces that are already live
