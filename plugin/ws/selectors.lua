@@ -4,6 +4,7 @@ local act = wezterm.action
 local ipairs = ipairs
 local pairs = pairs
 local pcall = pcall
+local table_concat = table.concat
 local table_insert = table.insert
 local table_sort = table.sort
 local type = type
@@ -24,8 +25,21 @@ local live_workspace_prefix = 'ws:'
 local workspace_selector_default_alphabet = UI.default_selector_alphabet()
 local workspace_selector_option_alphabet = workspace_selector_default_alphabet:sub(1, 7)
 local workspace_selector_numeric_alphabet = workspace_selector_default_alphabet:sub(8, 17)
-local workspace_selector_letter_alphabet = workspace_selector_default_alphabet:sub(18)
+local workspace_selector_separator_alphabet = workspace_selector_default_alphabet:sub(18, 20)
+local workspace_selector_letter_alphabet = workspace_selector_default_alphabet:sub(21)
+local section_choice_prefix = 'section:'
 local zoxide_choice_prefix = 'zoxide:'
+
+---@param choices WsWezChoice[]
+---@param id_suffix string
+---@param title string
+---@param width integer
+local function append_section_separator(choices, id_suffix, title, width)
+  table_insert(choices, {
+    id = section_choice_prefix .. id_suffix,
+    label = UI.selector_separator(title, width),
+  })
+end
 
 ---@param saved_workspaces WsWezSavedWorkspaceIndex
 ---@return string[]
@@ -86,22 +100,87 @@ local function update_max_width(current_width, text)
   return current_width
 end
 
+---@param widths integer[]
+---@return integer
+local function combine_segment_widths(widths)
+  local segment_count = 0
+  local total_width = 0
+
+  for _, width in ipairs(widths) do
+    if type(width) == 'number' and width > 0 then
+      segment_count = segment_count + 1
+      total_width = total_width + width
+    end
+  end
+
+  if segment_count > 1 then
+    total_width = total_width + segment_count - 1
+  end
+
+  return total_width
+end
+
 ---@param live_workspace_count integer
 ---@param zoxide_count integer
 ---@return string
 local function build_workspace_selector_alphabet(live_workspace_count, zoxide_count)
+  local alphabet_parts = {}
   local numeric_count = math.min(live_workspace_count, #workspace_selector_numeric_alphabet)
   local workspace_overflow_count = live_workspace_count - numeric_count
-  local reserved_letter_count = math.min(
-    workspace_overflow_count + zoxide_count,
-    #workspace_selector_letter_alphabet
-  )
+  local used_chars = {}
+  local separator_index = 1
 
-  return workspace_selector_option_alphabet
-    .. workspace_selector_numeric_alphabet:sub(1, numeric_count)
-    .. workspace_selector_letter_alphabet:sub(1, reserved_letter_count)
-    .. workspace_selector_numeric_alphabet:sub(numeric_count + 1)
-    .. workspace_selector_letter_alphabet:sub(reserved_letter_count + 1)
+  local function append_text(text)
+    if text == '' then
+      return
+    end
+
+    table_insert(alphabet_parts, text)
+
+    for index = 1, #text do
+      used_chars[text:sub(index, index)] = true
+    end
+  end
+
+  local function append_separator()
+    local separator_char = workspace_selector_separator_alphabet:sub(separator_index, separator_index)
+
+    if separator_char == '' then
+      return
+    end
+
+    separator_index = separator_index + 1
+    append_text(separator_char)
+  end
+
+  append_separator()
+  append_text(workspace_selector_option_alphabet)
+
+  if live_workspace_count > 0 then
+    append_separator()
+    append_text(workspace_selector_numeric_alphabet:sub(1, numeric_count))
+    append_text(workspace_selector_letter_alphabet:sub(1, workspace_overflow_count))
+  end
+
+  if zoxide_count > 0 then
+    append_separator()
+    append_text(
+      workspace_selector_letter_alphabet:sub(
+        workspace_overflow_count + 1,
+        workspace_overflow_count + zoxide_count
+      )
+    )
+  end
+
+  for index = 1, #workspace_selector_default_alphabet do
+    local char = workspace_selector_default_alphabet:sub(index, index)
+
+    if not used_chars[char] then
+      table_insert(alphabet_parts, char)
+    end
+  end
+
+  return table_concat(alphabet_parts)
 end
 
 ---@return { is_current: boolean, name: string, pane_count: integer }[]
@@ -147,12 +226,11 @@ end
 ---@param config WsWezResolvedConfig
 ---@param live_entries { is_current: boolean, name: string, pane_count: integer }[]
 ---@param layout { current_width?: integer, name_width?: integer, pane_count_width?: integer, prefix_width?: integer }|nil
----@param section_title string|nil
 ---@return WsWezChoice[]
-local function build_live_workspace_choices(config, live_entries, layout, section_title)
+local function build_live_workspace_choices(config, live_entries, layout)
   local workspace_choices = {}
 
-  for index, entry in ipairs(live_entries) do
+  for _, entry in ipairs(live_entries) do
     table_insert(workspace_choices, {
       id = live_workspace_prefix .. entry.name,
       label = UI.format_live_workspace_label(
@@ -160,8 +238,7 @@ local function build_live_workspace_choices(config, live_entries, layout, sectio
         entry.is_current,
         entry.pane_count,
         config,
-        layout,
-        index == 1 and section_title or nil
+        layout
       ),
     })
   end
@@ -175,6 +252,7 @@ end
 ---@param zoxide_dirs string[]
 ---@return {
 ---@  action: { prefix_width: integer, text_width: integer },
+---@  separator_width: integer,
 ---@  workspace: { current_width: integer, name_width: integer, pane_count_width: integer, prefix_width: integer },
 ---@  zoxide: { name_width: integer, prefix_width: integer },
 ---@}
@@ -182,6 +260,7 @@ local function build_workspace_selector_layout(config, action_specs, live_entrie
   local action_text_width = 0
   local current_width = UI.display_width(UI.current_indicator_text(config))
   local destination_name_width = 0
+  local max_row_width = 0
   local pane_count_width = 0
   local prefix_width = 0
 
@@ -205,11 +284,41 @@ local function build_workspace_selector_layout(config, action_specs, live_entrie
     destination_name_width = update_max_width(destination_name_width, Utils.basename(directory))
   end
 
+  max_row_width = combine_segment_widths {
+    prefix_width,
+    action_text_width,
+  }
+  max_row_width = update_max_width(
+    max_row_width,
+    string.rep(
+      ' ',
+      combine_segment_widths {
+        prefix_width,
+        destination_name_width,
+        pane_count_width,
+        current_width,
+      }
+    )
+  )
+
+  for _, directory in ipairs(zoxide_dirs) do
+    local zoxide_row_width = combine_segment_widths {
+      prefix_width,
+      destination_name_width,
+      UI.display_width('(' .. directory .. ')'),
+    }
+
+    if zoxide_row_width > max_row_width then
+      max_row_width = zoxide_row_width
+    end
+  end
+
   return {
     action = {
       prefix_width = prefix_width,
       text_width = action_text_width,
     },
+    separator_width = max_row_width,
     workspace = {
       current_width = current_width,
       name_width = destination_name_width,
@@ -302,39 +411,34 @@ local function build_workspace_selector_choices(config)
   local live_workspace_choices = build_live_workspace_choices(
     config,
     live_entries,
-    layout.workspace,
-    'workspaces'
+    layout.workspace
   )
   local alphabet = build_workspace_selector_alphabet(#live_workspace_choices, #zoxide_dirs)
 
-  for index, spec in ipairs(action_specs) do
+  append_section_separator(choices, 'options', 'options', layout.separator_width)
+
+  for _, spec in ipairs(action_specs) do
     table_insert(choices, {
       id = spec.id,
-      label = UI.format_action_label(
-        spec.text,
-        config,
-        layout.action,
-        index == 1 and 'options' or nil
-      ),
+      label = UI.format_action_label(spec.text, config, layout.action),
     })
   end
 
   if #live_workspace_choices > 0 then
+    append_section_separator(choices, 'workspaces', 'workspaces', layout.separator_width)
+
     for _, choice in ipairs(live_workspace_choices) do
       table_insert(choices, choice)
     end
   end
 
   if #zoxide_dirs > 0 then
-    for index, directory in ipairs(zoxide_dirs) do
+    append_section_separator(choices, 'zoxide-entries', 'zoxide entries', layout.separator_width)
+
+    for _, directory in ipairs(zoxide_dirs) do
       table_insert(choices, {
         id = zoxide_choice_prefix .. directory,
-        label = UI.format_directory_label(
-          directory,
-          config,
-          layout.zoxide,
-          index == 1 and 'zoxide entries' or nil
-        ),
+        label = UI.format_directory_label(directory, config, layout.zoxide),
       })
     end
   end
@@ -536,7 +640,7 @@ function M.show_workspace_selector(window, pane, callbacks)
     description = "(wezterm) Select workspace or directory: ['/': search]",
     fuzzy_description = '(wezterm) Select workspace or directory: ',
     on_select = function(win, current_pane, id)
-      if not id then
+      if not id or strip_prefix(id, section_choice_prefix) then
         return
       end
 
